@@ -5,7 +5,7 @@ import { supabase } from './supabase'
 import { io } from 'socket.io-client'
 import Tracker from './Tracker'
 
-const socket = io('http://localhost:3001')
+const socket = io('https://hacienda-servidor-production.up.railway.app')
 
 function MenuMesa() {
   const { mesa } = useParams()
