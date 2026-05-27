@@ -8,6 +8,8 @@ export default function Dashboard() {
 
   useEffect(() => {
     cargarDatos()
+    const intervalo = setInterval(cargarDatos, 30000)
+    return () => clearInterval(intervalo)
   }, [])
 
   async function cargarDatos() {
