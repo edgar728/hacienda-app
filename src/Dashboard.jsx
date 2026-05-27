@@ -1,5 +1,8 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
+import { io } from 'socket.io-client'
+
+const socket = io('https://hacienda-servidor-production.up.railway.app')
 
 export default function Dashboard() {
   const [ordenes, setOrdenes] = useState([])
@@ -8,8 +11,19 @@ export default function Dashboard() {
 
   useEffect(() => {
     cargarDatos()
-    const intervalo = setInterval(cargarDatos, 30000)
-    return () => clearInterval(intervalo)
+
+    socket.on('orden_recibida', () => {
+      cargarDatos()
+    })
+
+    socket.on('estado_actualizado', () => {
+      cargarDatos()
+    })
+
+    return () => {
+      socket.off('orden_recibida')
+      socket.off('estado_actualizado')
+    }
   }, [])
 
   async function cargarDatos() {
@@ -57,7 +71,10 @@ export default function Dashboard() {
       <div style={{ background: '#0C447C', color: 'white', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
           <div style={{ fontWeight: '600', fontSize: '16px' }}>📊 Dashboard · La Hacienda</div>
-          <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '2px' }}>Resumen de hoy</div>
+          <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '2px' }}>Se actualiza en tiempo real</div>
+        </div>
+        <div style={{ background: '#1D9E75', borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '500' }}>
+          ● En vivo
         </div>
       </div>
 
