@@ -67,6 +67,7 @@ function TarjetaOrden({ orden, onActualizar }) {
 
 export default function Cocina() {
   const { slug } = useParams()
+  const [ordenes, setOrdenes] = useState([])
 
   useEffect(() => {
     cargarOrdenes()
