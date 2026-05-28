@@ -3,6 +3,8 @@ import { supabase } from './supabase'
 import { io } from 'socket.io-client'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
+socket.on('connect', () => console.log('Dashboard conectado al servidor'))
+socket.on('connect_error', (err) => console.log('Error conexión:', err.message))
 
 export default function Dashboard() {
   const [ordenes, setOrdenes] = useState([])

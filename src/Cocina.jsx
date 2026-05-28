@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { io } from 'socket.io-client'
+import { useParams } from 'react-router-dom'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
 
@@ -65,7 +66,7 @@ function TarjetaOrden({ orden, onActualizar }) {
 }
 
 export default function Cocina() {
-  const [ordenes, setOrdenes] = useState([])
+  const { slug } = useParams()
 
   useEffect(() => {
     cargarOrdenes()
@@ -85,9 +86,16 @@ export default function Cocina() {
   }, [])
 
   async function cargarOrdenes() {
+    const { data: rest } = await supabase
+      .from('restaurantes')
+      .select('id')
+      .eq('slug', slug)
+      .single()
+
     const { data } = await supabase
       .from('ordenes')
       .select('*, orden_items(*)')
+      .eq('restaurante_id', rest.id)
       .neq('estado', 'lista')
       .order('created_at', { ascending: false })
     setOrdenes(data || [])
