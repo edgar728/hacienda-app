@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { io } from 'socket.io-client'
+import { useParams } from 'react-router-dom'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
 socket.on('connect', () => console.log('Dashboard conectado al servidor'))
 socket.on('connect_error', (err) => console.log('Error conexión:', err.message))
 
 export default function Dashboard() {
+  const { slug } = useParams()
   const [ordenes, setOrdenes] = useState([])
   const [platillos, setPlatillos] = useState([])
   const [cargando, setCargando] = useState(true)
@@ -28,19 +30,29 @@ export default function Dashboard() {
     }
   }, [])
 
-  async function cargarDatos() {
+ async function cargarDatos() {
     const hoy = new Date()
     hoy.setHours(0, 0, 0, 0)
+
+    const { data: rest } = await supabase
+      .from('restaurantes')
+      .select('id, nombre')
+      .eq('slug', slug)
+      .single()
+
+    if (!rest) return
 
     const { data: ordenesData } = await supabase
       .from('ordenes')
       .select('*, orden_items(*)')
+      .eq('restaurante_id', rest.id)
       .gte('created_at', hoy.toISOString())
       .order('created_at', { ascending: false })
 
     const { data: platillosData } = await supabase
       .from('platillos')
       .select('*')
+      .eq('restaurante_id', rest.id)
 
     setOrdenes(ordenesData || [])
     setPlatillos(platillosData || [])
@@ -72,7 +84,7 @@ export default function Dashboard() {
 
       <div style={{ background: '#0C447C', color: 'white', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontWeight: '600', fontSize: '16px' }}>📊 Dashboard · La Hacienda</div>
+          <div style={{ fontWeight: '600', fontSize: '16px' }}>📊 Dashboard · {slug}</div>
           <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '2px' }}>Se actualiza en tiempo real</div>
         </div>
         <div style={{ background: '#1D9E75', borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '500' }}>
