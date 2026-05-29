@@ -95,23 +95,18 @@ export default function Admin() {
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif", maxWidth: '480px', margin: '0 auto', background: C.fondo, minHeight: '100vh' }}>
 
-      {/* Header */}
       <div style={{ background: C.blanco, padding: '16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(44,37,35,0.04)', position: 'sticky', top: 0, zIndex: 50 }}>
         <div>
           <div style={{ fontSize: '18px', fontWeight: '700', color: C.textoPrincipal }}>⚡ Admin · OrderIA</div>
-          <div style={{ fontSize: '12px', color: C.textoSecundario }}>{restaurantes.length} restaurantes activos</div>
+          <div style={{ fontSize: '12px', color: C.textoSecundario }}>{restaurantes.length} restaurantes</div>
         </div>
-        <button
-          onClick={cargarDatos}
-          style={{ background: C.fondo, border: 'none', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', color: C.textoSecundario, cursor: 'pointer', fontWeight: '600' }}
-        >
+        <button onClick={cargarDatos} style={{ background: C.fondo, border: 'none', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', color: C.textoSecundario, cursor: 'pointer', fontWeight: '600' }}>
           🔄 Actualizar
         </button>
       </div>
 
       <div style={{ padding: '16px' }}>
 
-        {/* Resumen total */}
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '20px' }}>
           <div style={{ background: C.blanco, borderRadius: '14px', padding: '14px 10px', textAlign: 'center', boxShadow: '0 2px 8px rgba(44,37,35,0.04)' }}>
             <div style={{ fontSize: '22px', fontWeight: '700', color: C.rojo }}>{restaurantes.length}</div>
@@ -131,7 +126,6 @@ export default function Admin() {
           </div>
         </div>
 
-        {/* Lista de restaurantes */}
         <div style={{ fontSize: '12px', fontWeight: '600', color: C.textoSecundario, letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '10px' }}>
           Restaurantes
         </div>
@@ -155,7 +149,6 @@ export default function Admin() {
               </button>
             </div>
 
-            {/* Stats del día */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '8px', marginBottom: '14px' }}>
               <div style={{ background: C.fondo, borderRadius: '10px', padding: '8px', textAlign: 'center' }}>
                 <div style={{ fontSize: '16px', fontWeight: '700', color: C.textoPrincipal }}>{stats[r.id]?.ordenes || 0}</div>
@@ -171,7 +164,6 @@ export default function Admin() {
               </div>
             </div>
 
-            {/* Links rápidos */}
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px' }}>
               {[
                 { label: '🍽️ Mesa 1', url: `/r/${r.slug}/mesa/1` },
@@ -180,7 +172,7 @@ export default function Admin() {
                 { label: '📊 Dashboard', url: `/r/${r.slug}/dashboard` },
               ].map(link => (
                 
-                  key={link.url}
+                  <a key={link.url}
                   href={link.url}
                   target="_blank"
                   rel="noreferrer"
