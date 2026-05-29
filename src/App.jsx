@@ -6,6 +6,7 @@ import Cocina from './Cocina'
 import Dashboard from './Dashboard'
 import Mesero from './Mesero'
 import Admin from './Admin'
+import Mesas from './Mesas'
 import Tracker from './Tracker'
 import Chatbot from './Chatbot'
 
@@ -33,6 +34,10 @@ function MenuMesa() {
   const [ordenId, setOrdenId] = useState(null)
   const [cargando, setCargando] = useState(true)
   const [categoriaActiva, setCategoriaActiva] = useState(null)
+  const [mesaInfo, setMesaInfo] = useState(null)
+  const [codigoIngresado, setCodigoIngresado] = useState('')
+  const [codigoError, setCodigoError] = useState('')
+  const [codigoVerificado, setCodigoVerificado] = useState(false)
 
   useEffect(() => {
     async function cargar() {
@@ -45,6 +50,15 @@ function MenuMesa() {
       if (!rest) { setCargando(false); return }
       setRestaurante(rest)
 
+      const { data: mesaData } = await supabase
+        .from('mesas')
+        .select('*')
+        .eq('restaurante_id', rest.id)
+        .eq('numero', Number(mesa))
+        .single()
+
+      setMesaInfo(mesaData)
+
       const { data } = await supabase
         .from('platillos')
         .select('*')
@@ -55,7 +69,7 @@ function MenuMesa() {
       setCargando(false)
     }
     cargar()
-  }, [slug])
+  }, [slug, mesa])
 
   useEffect(() => {
     if (platillos.length > 0) {
@@ -63,6 +77,27 @@ function MenuMesa() {
       setCategoriaActiva(cats[0])
     }
   }, [platillos])
+
+  useEffect(() => {
+    socket.on('mesa_actualizada', (mesaActualizada) => {
+      if (mesaActualizada.numero === Number(mesa)) {
+        setMesaInfo(mesaActualizada)
+        if (mesaActualizada.status === 'disponible') {
+          setCodigoVerificado(false)
+          setCodigoIngresado('')
+        }
+      }
+    })
+    return () => socket.off('mesa_actualizada')
+  }, [mesa])
+
+  function verificarCodigo() {
+    if (codigoIngresado === mesaInfo.codigo) {
+      setCodigoVerificado(true)
+    } else {
+      setCodigoError('Código incorrecto. Pide el código al mesero.')
+    }
+  }
 
   function agregar(id) {
     setCarrito(prev => ({ ...prev, [id]: (prev[id] || 0) + 1 }))
@@ -135,12 +170,51 @@ function MenuMesa() {
     </div>
   )
 
+  if (mesaInfo && mesaInfo.status === 'disponible') return (
+    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", maxWidth: '420px', margin: '0 auto', background: C.fondo, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '48px', marginBottom: '16px' }}>🪑</div>
+        <div style={{ fontSize: '20px', fontWeight: '700', color: C.textoPrincipal, marginBottom: '8px' }}>Mesa no disponible</div>
+        <div style={{ fontSize: '14px', color: C.textoSecundario }}>Esta mesa aún no ha sido habilitada. Espera a que el mesero te atienda.</div>
+      </div>
+    </div>
+  )
+
+  if (mesaInfo && !codigoVerificado) return (
+    <div style={{ fontFamily: "'Plus Jakarta Sans', sans-serif", maxWidth: '420px', margin: '0 auto', background: C.fondo, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
+      <div style={{ width: '100%' }}>
+        <div style={{ textAlign: 'center', marginBottom: '32px' }}>
+          <div style={{ fontSize: '48px', marginBottom: '12px' }}>🔐</div>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: C.textoPrincipal }}>Ingresa el código</div>
+          <div style={{ fontSize: '14px', color: C.textoSecundario, marginTop: '4px' }}>Mesa {mesa} · {restaurante.nombre}</div>
+        </div>
+        <div style={{ background: C.blanco, borderRadius: '20px', padding: '24px', boxShadow: '0 4px 12px rgba(44,37,35,0.06)' }}>
+          <input
+            type="text"
+            value={codigoIngresado}
+            onChange={e => { setCodigoIngresado(e.target.value.toUpperCase()); setCodigoError('') }}
+            onKeyDown={e => e.key === 'Enter' && verificarCodigo()}
+            placeholder="Ej: AB12CD"
+            maxLength={6}
+            style={{ width: '100%', padding: '14px 16px', borderRadius: '12px', border: `1px solid ${codigoError ? C.rojo : '#E5DFD9'}`, fontSize: '20px', fontWeight: '700', letterSpacing: '4px', textAlign: 'center', outline: 'none', boxSizing: 'border-box', marginBottom: '8px', background: C.fondo }}
+          />
+          {codigoError && <div style={{ fontSize: '12px', color: C.rojo, marginBottom: '8px', textAlign: 'center' }}>{codigoError}</div>}
+          <button
+            onClick={verificarCodigo}
+            style={{ width: '100%', background: C.rojo, color: C.blanco, border: 'none', borderRadius: '100px', padding: '14px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', marginTop: '8px' }}
+          >
+            Entrar al menú
+          </button>
+        </div>
+      </div>
+    </div>
+  )
+
   if (ordenada) return <Tracker mesa={mesa} ordenId={ordenId} />
 
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif", maxWidth: '420px', margin: '0 auto', background: C.fondo, minHeight: '100vh', paddingBottom: totalItems > 0 ? '100px' : '24px' }}>
 
-      {/* Header fijo */}
       <div style={{ position: 'sticky', top: 0, zIndex: 50, background: C.blanco, boxShadow: '0 2px 8px rgba(44,37,35,0.04)', padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
         <div style={{ fontSize: '18px', fontWeight: '700', color: C.textoPrincipal }}>{restaurante.nombre}</div>
         <div style={{ background: C.verde, color: C.blanco, fontSize: '12px', fontWeight: '700', padding: '6px 12px', borderRadius: '20px' }}>
@@ -148,7 +222,6 @@ function MenuMesa() {
         </div>
       </div>
 
-      {/* Selector de categorías */}
       <div style={{ background: C.blanco, padding: '0 16px', display: 'flex', gap: '4px', overflowX: 'auto', borderBottom: '1px solid #F0EBE6' }}>
         {categorias.map(cat => (
           <button
@@ -173,19 +246,14 @@ function MenuMesa() {
         ))}
       </div>
 
-      {/* Lista de platillos */}
       <div style={{ padding: '16px' }}>
         {platillosFiltrados.map(p => (
           <div key={p.id} style={{ background: C.blanco, borderRadius: '16px', padding: '12px', marginBottom: '12px', display: 'flex', gap: '12px', boxShadow: '0 4px 12px rgba(44,37,35,0.03)', alignItems: 'center' }}>
-
-            {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <div style={{ fontSize: '15px', fontWeight: '600', color: C.textoPrincipal, marginBottom: '4px', lineHeight: '1.3' }}>{p.nombre}</div>
               <div style={{ fontSize: '12px', color: C.textoSecundario, marginBottom: '8px', overflow: 'hidden', display: '-webkit-box', WebkitLineClamp: 2, WebkitBoxOrient: 'vertical' }}>{p.descripcion}</div>
               <div style={{ fontSize: '15px', fontWeight: '700', color: C.rojo }}>${p.precio}</div>
             </div>
-
-            {/* Imagen + control */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <div style={{ width: '86px', height: '86px', borderRadius: '12px', background: '#F5EDE8', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '36px' }}>
                 {p.emoji}
@@ -202,14 +270,12 @@ function MenuMesa() {
                 )}
               </div>
             </div>
-
           </div>
         ))}
 
         <Chatbot platillos={platillos} />
       </div>
 
-      {/* Botón flotante */}
       {totalItems > 0 && (
         <div style={{ position: 'fixed', bottom: '20px', left: '50%', transform: 'translateX(-50%)', width: 'calc(100% - 32px)', maxWidth: '388px', zIndex: 100 }}>
           <div
@@ -248,6 +314,7 @@ function App() {
         <Route path="/r/:slug/cocina" element={<Cocina />} />
         <Route path="/r/:slug/dashboard" element={<Dashboard />} />
         <Route path="/r/:slug/mesero" element={<Mesero />} />
+        <Route path="/r/:slug/mesas" element={<Mesas />} />
         <Route path="/admin" element={<Admin />} />
       </Routes>
     </BrowserRouter>
