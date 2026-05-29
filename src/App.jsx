@@ -5,6 +5,7 @@ import { io } from 'socket.io-client'
 import Cocina from './Cocina'
 import Dashboard from './Dashboard'
 import Mesero from './Mesero'
+import Admin from './Admin'
 import Tracker from './Tracker'
 import Chatbot from './Chatbot'
 
@@ -247,6 +248,7 @@ function App() {
         <Route path="/r/:slug/cocina" element={<Cocina />} />
         <Route path="/r/:slug/dashboard" element={<Dashboard />} />
         <Route path="/r/:slug/mesero" element={<Mesero />} />
+        <Route path="/admin" element={<Admin />} />
       </Routes>
     </BrowserRouter>
   )
