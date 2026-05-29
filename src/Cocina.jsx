@@ -73,7 +73,11 @@ export default function Cocina() {
     cargarOrdenes()
 
     socket.on('orden_recibida', (orden) => {
-      setOrdenes(prev => [{ ...orden, orden_items: orden.items }, ...prev])
+      if (orden.slug !== slug) return
+      const itemsSinBebidas = orden.items?.filter(i => i.categoria !== 'Bebidas')
+      if (itemsSinBebidas?.length > 0) {
+        setOrdenes(prev => [{ ...orden, orden_items: itemsSinBebidas }, ...prev])
+      }
     })
 
     socket.on('estado_actualizado', ({ orden_id, estado }) => {
@@ -84,7 +88,7 @@ export default function Cocina() {
       socket.off('orden_recibida')
       socket.off('estado_actualizado')
     }
-  }, [])
+  }, [slug])
 
   async function cargarOrdenes() {
     const { data: rest } = await supabase
@@ -99,7 +103,13 @@ export default function Cocina() {
       .eq('restaurante_id', rest.id)
       .neq('estado', 'lista')
       .order('created_at', { ascending: false })
-    setOrdenes(data || [])
+
+    const ordenesFiltered = (data || []).map(o => ({
+      ...o,
+      orden_items: o.orden_items?.filter(i => i.categoria !== 'Bebidas')
+    })).filter(o => o.orden_items?.length > 0)
+
+    setOrdenes(ordenesFiltered)
   }
 
   function actualizarEstado(id, estado) {
@@ -113,7 +123,7 @@ export default function Cocina() {
     <div style={{ fontFamily: 'sans-serif', padding: '16px', background: '#f5f5f5', minHeight: '100vh' }}>
       <div style={{ background: '#0C447C', color: 'white', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <div>
-          <div style={{ fontWeight: '600', fontSize: '16px' }}>🍳 Cocina · La Hacienda</div>
+          <div style={{ fontWeight: '600', fontSize: '16px' }}>🍳 Cocina · {slug}</div>
           <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '2px' }}>{ordenes.length} órdenes activas</div>
         </div>
         <div style={{ background: '#1D9E75', borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '500' }}>

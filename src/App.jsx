@@ -93,7 +93,7 @@ function MenuMesa() {
 
     const items = Object.entries(carrito).map(([id, cantidad]) => {
       const p = platillos.find(p => p.id === Number(id))
-      return { orden_id: orden.id, platillo_id: Number(id), nombre: p.nombre, precio: p.precio, cantidad }
+      return { orden_id: orden.id, platillo_id: Number(id), nombre: p.nombre, precio: p.precio, cantidad, categoria: p.categoria }
     })
 
     await supabase.from('orden_items').insert(items)
