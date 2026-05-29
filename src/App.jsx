@@ -7,6 +7,8 @@ import Dashboard from './Dashboard'
 import Mesero from './Mesero'
 import Admin from './Admin'
 import Mesas from './Mesas'
+import Login from './Login'
+import ProtegerRuta from './ProtegerRuta'
 import Tracker from './Tracker'
 import Chatbot from './Chatbot'
 
@@ -310,15 +312,31 @@ function App() {
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Inicio />} />
+        <Route path="/login" element={<Login />} />
         <Route path="/r/:slug/mesa/:mesa" element={<MenuMesa />} />
-        <Route path="/r/:slug/cocina" element={<Cocina />} />
-        <Route path="/r/:slug/dashboard" element={<Dashboard />} />
-        <Route path="/r/:slug/mesero" element={<Mesero />} />
-        <Route path="/r/:slug/mesas" element={<Mesas />} />
+        <Route path="/r/:slug/cocina" element={
+          <ProtegerRuta roles={['cocina']}>
+            <Cocina />
+          </ProtegerRuta>
+        } />
+        <Route path="/r/:slug/dashboard" element={
+          <ProtegerRuta roles={['dashboard']}>
+            <Dashboard />
+          </ProtegerRuta>
+        } />
+        <Route path="/r/:slug/mesero" element={
+          <ProtegerRuta roles={['mesero']}>
+            <Mesero />
+          </ProtegerRuta>
+        } />
+        <Route path="/r/:slug/mesas" element={
+          <ProtegerRuta roles={['mesas', 'mesero']}>
+            <Mesas />
+          </ProtegerRuta>
+        } />
         <Route path="/admin" element={<Admin />} />
       </Routes>
     </BrowserRouter>
   )
 }
-
 export default App
