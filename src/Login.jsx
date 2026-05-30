@@ -34,8 +34,8 @@ export default function Login() {
 
     if (!usuario) { setError('Email o contraseña incorrectos'); return }
 
-    localStorage.setItem('orderia_user', JSON.stringify(usuario))
-
+    sessionStorage.setItem('orderia_user', JSON.stringify(usuario))
+    
     if (usuario.rol === 'cocina') navigate(`/r/${usuario.slug}/cocina`)
     else if (usuario.rol === 'mesero') navigate(`/r/${usuario.slug}/mesero`)
     else if (usuario.rol === 'mesas') navigate(`/r/${usuario.slug}/mesas`)

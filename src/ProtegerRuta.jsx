@@ -7,7 +7,7 @@ export default function ProtegerRuta({ children, roles }) {
   const { slug } = useParams()
 
   useEffect(() => {
-    const raw = localStorage.getItem('orderia_user')
+    const raw = sessionStorage.getItem('orderia_user')
     if (!raw) { navigate('/login'); return }
 
     const usuario = JSON.parse(raw)
