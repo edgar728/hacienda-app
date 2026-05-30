@@ -11,7 +11,6 @@ const C = {
 }
 
 const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD
-console.log('Password cargada:', ADMIN_PASSWORD)
 
 export default function Admin() {
   const [autenticado, setAutenticado] = useState(false)
@@ -20,13 +19,31 @@ export default function Admin() {
   const [restaurantes, setRestaurantes] = useState([])
   const [stats, setStats] = useState({})
   const [cargando, setCargando] = useState(false)
+  const [modalRestaurante, setModalRestaurante] = useState(false)
+  const [nuevoRestaurante, setNuevoRestaurante] = useState({ nombre: '', slug: '', descripcion: '', mesas: 10 })
+  const [creandoRestaurante, setCreandoRestaurante] = useState(false)
+  const [errorRestaurante, setErrorRestaurante] = useState('')
+  const [modalUsuario, setModalUsuario] = useState(null)
+  const [nuevoUsuario, setNuevoUsuario] = useState({ nombre: '', email: '', password: '', rol: 'cocina' })
+  const [usuariosRestaurante, setUsuariosRestaurante] = useState([])
+  const [loadingUsuarios, setLoadingUsuarios] = useState(false)
+
+  useEffect(() => {
+    const auth = sessionStorage.getItem('orderia_admin')
+    if (auth === 'true') {
+      setAutenticado(true)
+      cargarDatos()
+    }
+  }, [])
 
   function login() {
     if (password === ADMIN_PASSWORD) {
+      sessionStorage.setItem('orderia_admin', 'true')
       setAutenticado(true)
       cargarDatos()
     } else {
       setError('Contraseña incorrecta')
+      setPassword('')
     }
   }
 
@@ -62,6 +79,75 @@ export default function Admin() {
   async function toggleRestaurante(id, activo) {
     await supabase.from('restaurantes').update({ activo: !activo }).eq('id', id)
     setRestaurantes(prev => prev.map(r => r.id === id ? { ...r, activo: !activo } : r))
+  }
+
+  async function crearRestaurante() {
+    if (!nuevoRestaurante.nombre || !nuevoRestaurante.slug) {
+      setErrorRestaurante('Nombre y slug son obligatorios')
+      return
+    }
+    setCreandoRestaurante(true)
+    setErrorRestaurante('')
+
+    const slugLimpio = nuevoRestaurante.slug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+
+    const { data: rest, error } = await supabase
+      .from('restaurantes')
+      .insert({ nombre: nuevoRestaurante.nombre, slug: slugLimpio, descripcion: nuevoRestaurante.descripcion })
+      .select()
+      .single()
+
+    if (error) {
+      setErrorRestaurante('El slug ya existe, elige otro')
+      setCreandoRestaurante(false)
+      return
+    }
+
+    const mesas = []
+    for (let i = 1; i <= nuevoRestaurante.mesas; i++) {
+      mesas.push({ restaurante_id: rest.id, numero: i, status: 'disponible' })
+    }
+    await supabase.from('mesas').insert(mesas)
+
+    setRestaurantes(prev => [rest, ...prev])
+    setModalRestaurante(false)
+    setNuevoRestaurante({ nombre: '', slug: '', descripcion: '', mesas: 10 })
+    setCreandoRestaurante(false)
+  }
+
+  async function abrirModalUsuarios(restaurante) {
+    setModalUsuario(restaurante)
+    setLoadingUsuarios(true)
+    const { data } = await supabase
+      .from('usuarios')
+      .select('*')
+      .eq('restaurante_id', restaurante.id)
+    setUsuariosRestaurante(data || [])
+    setLoadingUsuarios(false)
+  }
+
+  async function crearUsuario() {
+    if (!nuevoUsuario.nombre || !nuevoUsuario.email || !nuevoUsuario.password) return
+    const { data } = await supabase
+      .from('usuarios')
+      .insert({
+        nombre: nuevoUsuario.nombre,
+        email: nuevoUsuario.email.toLowerCase(),
+        password: nuevoUsuario.password,
+        rol: nuevoUsuario.rol,
+        restaurante_id: modalUsuario.id,
+        slug: modalUsuario.slug
+      })
+      .select()
+      .single()
+
+    setUsuariosRestaurante(prev => [...prev, data])
+    setNuevoUsuario({ nombre: '', email: '', password: '', rol: 'cocina' })
+  }
+
+  async function eliminarUsuario(id) {
+    await supabase.from('usuarios').delete().eq('id', id)
+    setUsuariosRestaurante(prev => prev.filter(u => u.id !== id))
   }
 
   if (!autenticado) return (
@@ -101,9 +187,17 @@ export default function Admin() {
           <div style={{ fontSize: '18px', fontWeight: '700', color: C.textoPrincipal }}>⚡ Admin · OrderIA</div>
           <div style={{ fontSize: '12px', color: C.textoSecundario }}>{restaurantes.length} restaurantes</div>
         </div>
-        <button onClick={cargarDatos} style={{ background: C.fondo, border: 'none', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', color: C.textoSecundario, cursor: 'pointer', fontWeight: '600' }}>
-          🔄 Actualizar
-        </button>
+        <div style={{ display: 'flex', gap: '8px' }}>
+          <button
+            onClick={() => setModalRestaurante(true)}
+            style={{ background: C.rojo, color: C.blanco, border: 'none', borderRadius: '10px', padding: '8px 14px', fontSize: '12px', cursor: 'pointer', fontWeight: '700' }}
+          >
+            + Restaurante
+          </button>
+          <button onClick={cargarDatos} style={{ background: C.fondo, border: 'none', borderRadius: '10px', padding: '8px 12px', fontSize: '12px', color: C.textoSecundario, cursor: 'pointer', fontWeight: '600' }}>
+            🔄
+          </button>
+        </div>
       </div>
 
       <div style={{ padding: '16px' }}>
@@ -165,6 +259,13 @@ export default function Admin() {
               </div>
             </div>
 
+            <button
+              onClick={() => abrirModalUsuarios(r)}
+              style={{ width: '100%', background: C.fondo, color: C.textoPrincipal, border: `1px solid #E5DFD9`, borderRadius: '10px', padding: '10px', fontSize: '13px', fontWeight: '600', cursor: 'pointer', marginBottom: '10px' }}
+            >
+              👥 Gestionar usuarios
+            </button>
+
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 1fr', gap: '6px' }}>
               {[
                 { label: '🍽️ Mesa 1', url: `/r/${r.slug}/mesa/1` },
@@ -173,7 +274,7 @@ export default function Admin() {
                 { label: '📊 Dashboard', url: `/r/${r.slug}/dashboard` },
               ].map(link => (
                 
-                <a key={link.url}
+                 <a key={link.url}
                   href={link.url}
                   target="_blank"
                   rel="noreferrer"
@@ -188,6 +289,159 @@ export default function Admin() {
         ))}
 
       </div>
+
+      {/* Modal nuevo restaurante */}
+      {modalRestaurante && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(44,37,35,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: C.blanco, borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '420px' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div style={{ fontSize: '16px', fontWeight: '700', color: C.textoPrincipal }}>🏪 Nuevo restaurante</div>
+              <button onClick={() => { setModalRestaurante(false); setErrorRestaurante('') }} style={{ background: C.fondo, border: 'none', borderRadius: '10px', padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: C.textoSecundario }}>✕</button>
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '600', color: C.textoSecundario, display: 'block', marginBottom: '6px' }}>NOMBRE DEL RESTAURANTE</label>
+              <input
+                placeholder="Ej: La Hacienda"
+                value={nuevoRestaurante.nombre}
+                onChange={e => {
+                  const nombre = e.target.value
+                  const slugAuto = nombre.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '')
+                  setNuevoRestaurante(prev => ({ ...prev, nombre, slug: slugAuto }))
+                  setErrorRestaurante('')
+                }}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E5DFD9', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: C.fondo }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '600', color: C.textoSecundario, display: 'block', marginBottom: '6px' }}>SLUG (URL)</label>
+              <div style={{ display: 'flex', alignItems: 'center', background: C.fondo, borderRadius: '10px', border: '1px solid #E5DFD9', overflow: 'hidden' }}>
+                <span style={{ padding: '12px 10px', fontSize: '13px', color: C.textoSecundario, whiteSpace: 'nowrap' }}>/r/</span>
+                <input
+                  placeholder="la-hacienda"
+                  value={nuevoRestaurante.slug}
+                  onChange={e => { setNuevoRestaurante(prev => ({ ...prev, slug: e.target.value })); setErrorRestaurante('') }}
+                  style={{ flex: 1, padding: '12px 10px 12px 0', border: 'none', fontSize: '14px', outline: 'none', background: 'transparent' }}
+                />
+              </div>
+            </div>
+
+            <div style={{ marginBottom: '12px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '600', color: C.textoSecundario, display: 'block', marginBottom: '6px' }}>DESCRIPCIÓN</label>
+              <input
+                placeholder="Ej: Cocina mexicana · Providencia, GDL"
+                value={nuevoRestaurante.descripcion}
+                onChange={e => setNuevoRestaurante(prev => ({ ...prev, descripcion: e.target.value }))}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E5DFD9', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: C.fondo }}
+              />
+            </div>
+
+            <div style={{ marginBottom: '20px' }}>
+              <label style={{ fontSize: '12px', fontWeight: '600', color: C.textoSecundario, display: 'block', marginBottom: '6px' }}>NÚMERO DE MESAS</label>
+              <input
+                type="number"
+                min="1"
+                max="50"
+                value={nuevoRestaurante.mesas}
+                onChange={e => setNuevoRestaurante(prev => ({ ...prev, mesas: Number(e.target.value) }))}
+                style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: '1px solid #E5DFD9', fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: C.fondo }}
+              />
+              <div style={{ fontSize: '11px', color: C.textoSecundario, marginTop: '4px' }}>Se crearán {nuevoRestaurante.mesas} mesas automáticamente</div>
+            </div>
+
+            {errorRestaurante && (
+              <div style={{ background: '#FDE8E8', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: C.rojo, marginBottom: '14px', fontWeight: '500' }}>
+                {errorRestaurante}
+              </div>
+            )}
+
+            <button
+              onClick={crearRestaurante}
+              disabled={creandoRestaurante}
+              style={{ width: '100%', background: creandoRestaurante ? '#E5DFD9' : C.rojo, color: C.blanco, border: 'none', borderRadius: '100px', padding: '14px', fontSize: '15px', fontWeight: '700', cursor: creandoRestaurante ? 'not-allowed' : 'pointer' }}
+            >
+              {creandoRestaurante ? 'Creando...' : '🏪 Crear restaurante'}
+            </button>
+
+          </div>
+        </div>
+      )}
+
+      {/* Modal usuarios */}
+      {modalUsuario && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(44,37,35,0.5)', zIndex: 200, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+          <div style={{ background: C.blanco, borderRadius: '20px', padding: '24px', width: '100%', maxWidth: '420px', maxHeight: '90vh', overflowY: 'auto' }}>
+
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
+              <div>
+                <div style={{ fontSize: '16px', fontWeight: '700', color: C.textoPrincipal }}>👥 Usuarios</div>
+                <div style={{ fontSize: '12px', color: C.textoSecundario }}>{modalUsuario.nombre}</div>
+              </div>
+              <button onClick={() => setModalUsuario(null)} style={{ background: C.fondo, border: 'none', borderRadius: '10px', padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: C.textoSecundario }}>✕ Cerrar</button>
+            </div>
+
+            <div style={{ background: C.fondo, borderRadius: '14px', padding: '16px', marginBottom: '20px' }}>
+              <div style={{ fontSize: '12px', fontWeight: '600', color: C.textoSecundario, marginBottom: '12px' }}>NUEVO USUARIO</div>
+              <input
+                placeholder="Nombre"
+                value={nuevoUsuario.nombre}
+                onChange={e => setNuevoUsuario(prev => ({ ...prev, nombre: e.target.value }))}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #E5DFD9', fontSize: '14px', outline: 'none', boxSizing: 'border-box', marginBottom: '8px', background: C.blanco }}
+              />
+              <input
+                placeholder="Email"
+                value={nuevoUsuario.email}
+                onChange={e => setNuevoUsuario(prev => ({ ...prev, email: e.target.value }))}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #E5DFD9', fontSize: '14px', outline: 'none', boxSizing: 'border-box', marginBottom: '8px', background: C.blanco }}
+              />
+              <input
+                placeholder="Contraseña"
+                value={nuevoUsuario.password}
+                onChange={e => setNuevoUsuario(prev => ({ ...prev, password: e.target.value }))}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #E5DFD9', fontSize: '14px', outline: 'none', boxSizing: 'border-box', marginBottom: '8px', background: C.blanco }}
+              />
+              <select
+                value={nuevoUsuario.rol}
+                onChange={e => setNuevoUsuario(prev => ({ ...prev, rol: e.target.value }))}
+                style={{ width: '100%', padding: '10px 14px', borderRadius: '10px', border: '1px solid #E5DFD9', fontSize: '14px', outline: 'none', boxSizing: 'border-box', marginBottom: '12px', background: C.blanco }}
+              >
+                <option value="cocina">🍳 Cocina</option>
+                <option value="mesero">🛎️ Mesero</option>
+                <option value="mesas">🪑 Mesas</option>
+                <option value="dashboard">📊 Dashboard (Dueño)</option>
+              </select>
+              <button
+                onClick={crearUsuario}
+                style={{ width: '100%', background: C.rojo, color: C.blanco, border: 'none', borderRadius: '100px', padding: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
+              >
+                + Crear usuario
+              </button>
+            </div>
+
+            <div style={{ fontSize: '12px', fontWeight: '600', color: C.textoSecundario, marginBottom: '10px' }}>USUARIOS ACTUALES</div>
+            {loadingUsuarios && <div style={{ textAlign: 'center', color: C.textoSecundario, padding: '20px' }}>Cargando...</div>}
+            {usuariosRestaurante.map(u => (
+              <div key={u.id} style={{ background: C.fondo, borderRadius: '12px', padding: '12px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: C.textoPrincipal }}>{u.nombre}</div>
+                  <div style={{ fontSize: '11px', color: C.textoSecundario }}>{u.email}</div>
+                  <div style={{ fontSize: '11px', color: C.rojo, fontWeight: '600', marginTop: '2px' }}>{u.rol}</div>
+                </div>
+                <button
+                  onClick={() => eliminarUsuario(u.id)}
+                  style={{ background: '#FDE8E8', color: C.rojo, border: 'none', borderRadius: '8px', padding: '6px 10px', fontSize: '12px', fontWeight: '600', cursor: 'pointer' }}
+                >
+                  Eliminar
+                </button>
+              </div>
+            ))}
+
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }
