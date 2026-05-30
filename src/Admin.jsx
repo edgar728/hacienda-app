@@ -10,7 +10,8 @@ const C = {
   textoSecundario: '#8C827E',
 }
 
-const ADMIN_PASSWORD = 'orderia2024'
+const ADMIN_PASSWORD = import.meta.env.VITE_ADMIN_PASSWORD
+console.log('Password cargada:', ADMIN_PASSWORD)
 
 export default function Admin() {
   const [autenticado, setAutenticado] = useState(false)
