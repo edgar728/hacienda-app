@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from './supabase'
 import { io } from 'socket.io-client'
+import { useState, useEffect, useRef } from 'react'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
 
@@ -31,6 +32,7 @@ export default function Mesero() {
   const [mesas, setMesas] = useState([])
   const [ordenesListas, setOrdenesListas] = useState([])
   const [restauranteId, setRestauranteId] = useState(null)
+  const restauranteIdRef = useRef(null) 
   const [cargando, setCargando] = useState(true)
   const [modalCuenta, setModalCuenta] = useState(null)
   const [ordenesModal, setOrdenesModal] = useState([])
@@ -66,6 +68,7 @@ export default function Mesero() {
       .single()
 
     setRestauranteId(rest.id)
+    restauranteIdRef.current = rest.id
 
     const { data: mesasData } = await supabase
       .from('mesas')
@@ -79,7 +82,7 @@ export default function Mesero() {
   }
 
   async function cargarOrdenesListas(restId) {
-    const id = restId || restauranteId
+    const id = restId || restauranteIdRef.current
     if (!id) return
 
     const { data } = await supabase
