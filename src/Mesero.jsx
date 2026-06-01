@@ -40,18 +40,17 @@ export default function Mesero() {
   useEffect(() => {
     cargarTodo()
 
-    socket.on('mesa_actualizada', (mesa) => {
-      setMesas(prev => prev.map(m => m.id === mesa.id ? mesa : m))
-    })
+    socket.on('orden_recibida', () => {
+  setTimeout(() => cargarOrdenesListas(), 500)
+})
 
-    socket.on('orden_recibida', () => cargarOrdenesListas())
-    socket.on('estado_actualizado', ({ orden_id, estado }) => {
-      if (estado === 'lista') {
-        cargarOrdenesListas()
-      } else if (estado === 'entregada') {
-        setOrdenesListas(prev => prev.filter(o => o.id !== orden_id))
-      }
-    })
+socket.on('estado_actualizado', ({ orden_id, estado }) => {
+  if (estado === 'lista') {
+    setTimeout(() => cargarOrdenesListas(), 500)
+  } else if (estado === 'entregada') {
+    setOrdenesListas(prev => prev.filter(o => o.id !== orden_id))
+  }
+})
 
     return () => {
       socket.off('mesa_actualizada')
