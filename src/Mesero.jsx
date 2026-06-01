@@ -1,8 +1,7 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useParams } from 'react-router-dom'
 import { supabase } from './supabase'
 import { io } from 'socket.io-client'
-import { useState, useEffect, useRef } from 'react'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
 
@@ -32,7 +31,7 @@ export default function Mesero() {
   const [mesas, setMesas] = useState([])
   const [ordenesListas, setOrdenesListas] = useState([])
   const [restauranteId, setRestauranteId] = useState(null)
-  const restauranteIdRef = useRef(null) 
+  const restauranteIdRef = useRef(null)
   const [cargando, setCargando] = useState(true)
   const [modalCuenta, setModalCuenta] = useState(null)
   const [ordenesModal, setOrdenesModal] = useState([])
@@ -40,17 +39,19 @@ export default function Mesero() {
   useEffect(() => {
     cargarTodo()
 
-    socket.on('orden_recibida', () => {
-  setTimeout(() => cargarOrdenesListas(), 500)
-})
+    socket.on('mesa_actualizada', (mesa) => {
+      setMesas(prev => prev.map(m => m.id === mesa.id ? mesa : m))
+    })
 
-socket.on('estado_actualizado', ({ orden_id, estado }) => {
-  if (estado === 'lista') {
-    setTimeout(() => cargarOrdenesListas(), 500)
-  } else if (estado === 'entregada') {
-    setOrdenesListas(prev => prev.filter(o => o.id !== orden_id))
-  }
-})
+    socket.on('estado_actualizado', ({ orden_id, estado, mesa }) => {
+      if (estado === 'lista') {
+        setTimeout(() => {
+          if (restauranteIdRef.current) cargarOrdenesListas(restauranteIdRef.current)
+        }, 800)
+      } else if (estado === 'entregada') {
+        setOrdenesListas(prev => prev.filter(o => o.id !== orden_id))
+      }
+    })
 
     return () => {
       socket.off('mesa_actualizada')
@@ -80,17 +81,14 @@ socket.on('estado_actualizado', ({ orden_id, estado }) => {
     setCargando(false)
   }
 
-  async function cargarOrdenesListas(restId) {
-    const id = restId || restauranteIdRef.current
+  async function cargarOrdenesListas(id) {
     if (!id) return
-
     const { data } = await supabase
       .from('ordenes')
       .select('*, orden_items(*)')
       .eq('restaurante_id', id)
       .eq('estado', 'lista')
       .order('created_at', { ascending: true })
-
     setOrdenesListas(data || [])
   }
 
@@ -124,15 +122,29 @@ socket.on('estado_actualizado', ({ orden_id, estado }) => {
     socket.emit('mesa_actualizada', updated)
   }
 
-  async function marcarEntregada(ordenId, mesa, total) {
+  async function marcarEntregada(ordenId, orden, total) {
     await supabase.from('ordenes').update({ estado: 'entregada' }).eq('id', ordenId)
 
-    await supabase.from('mesas')
-      .update({ total_acumulado: (mesa.total_acumulado || 0) + total })
-      .eq('restaurante_id', restauranteId)
-      .eq('numero', mesa.numero || mesa)
+    const mesaNum = orden.mesa
+    const { data: mesaData } = await supabase
+      .from('mesas')
+      .select('*')
+      .eq('restaurante_id', restauranteIdRef.current)
+      .eq('numero', mesaNum)
+      .single()
 
-    socket.emit('actualizar_estado', { orden_id: ordenId, estado: 'entregada', mesa: mesa.numero || mesa })
+    if (mesaData) {
+      const nuevoTotal = (mesaData.total_acumulado || 0) + total
+      const { data: updated } = await supabase
+        .from('mesas')
+        .update({ total_acumulado: nuevoTotal })
+        .eq('id', mesaData.id)
+        .select()
+        .single()
+      setMesas(prev => prev.map(m => m.id === mesaData.id ? updated : m))
+    }
+
+    socket.emit('actualizar_estado', { orden_id: ordenId, estado: 'entregada', mesa: mesaNum })
     setOrdenesListas(prev => prev.filter(o => o.id !== ordenId))
   }
 
@@ -140,19 +152,20 @@ socket.on('estado_actualizado', ({ orden_id, estado }) => {
     const { data } = await supabase
       .from('ordenes')
       .select('*, orden_items(*)')
-      .eq('restaurante_id', restauranteId)
+      .eq('restaurante_id', restauranteIdRef.current)
       .eq('mesa', mesa.numero)
-      .neq('estado', 'disponible')
       .order('created_at', { ascending: true })
 
-    const ordenesActivas = (data || []).filter(o => o.estado !== 'pagada')
+    const ordenesActivas = (data || []).filter(o => o.estado !== 'pagada' && o.estado !== 'disponible')
     setOrdenesModal(ordenesActivas)
     setModalCuenta(mesa)
   }
 
   async function cobrarMesa(mesa) {
     const ids = ordenesModal.map(o => o.id)
-    await supabase.from('ordenes').update({ estado: 'pagada' }).in('id', ids)
+    if (ids.length > 0) {
+      await supabase.from('ordenes').update({ estado: 'pagada' }).in('id', ids)
+    }
     await cambiarStatusMesa(mesa, 'disponible')
     setModalCuenta(null)
     setOrdenesModal([])
@@ -177,7 +190,6 @@ socket.on('estado_actualizado', ({ orden_id, estado }) => {
   return (
     <div style={{ fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif", maxWidth: '480px', margin: '0 auto', background: C.fondo, minHeight: '100vh' }}>
 
-      {/* Header */}
       <div style={{ background: C.blanco, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(44,37,35,0.04)', position: 'sticky', top: 0, zIndex: 50 }}>
         <div>
           <div style={{ fontSize: '18px', fontWeight: '700', color: C.textoPrincipal }}>🛎️ Mesero</div>
@@ -190,7 +202,6 @@ socket.on('estado_actualizado', ({ orden_id, estado }) => {
         )}
       </div>
 
-      {/* Tabs */}
       <div style={{ background: C.blanco, display: 'flex', borderBottom: '1px solid #F0EBE6' }}>
         <button
           onClick={() => setTab('mesas')}
@@ -200,22 +211,24 @@ socket.on('estado_actualizado', ({ orden_id, estado }) => {
         </button>
         <button
           onClick={() => setTab('entregas')}
-          style={{ flex: 1, padding: '12px', fontSize: '13px', fontWeight: '600', color: tab === 'entregas' ? C.rojo : C.textoSecundario, background: 'transparent', border: 'none', borderBottom: tab === 'entregas' ? `3px solid ${C.rojo}` : '3px solid transparent', cursor: 'pointer', position: 'relative' }}
+          style={{ flex: 1, padding: '12px', fontSize: '13px', fontWeight: '600', color: tab === 'entregas' ? C.rojo : C.textoSecundario, background: 'transparent', border: 'none', borderBottom: tab === 'entregas' ? `3px solid ${C.rojo}` : '3px solid transparent', cursor: 'pointer' }}
         >
-          🍽️ Entregas {ordenesListas.length > 0 && <span style={{ background: C.rojo, color: C.blanco, borderRadius: '20px', padding: '1px 7px', fontSize: '11px', marginLeft: '4px' }}>{ordenesListas.length}</span>}
+          🍽️ Entregas {ordenesListas.length > 0 && (
+            <span style={{ background: C.rojo, color: C.blanco, borderRadius: '20px', padding: '1px 7px', fontSize: '11px', marginLeft: '4px' }}>
+              {ordenesListas.length}
+            </span>
+          )}
         </button>
       </div>
 
       <div style={{ padding: '16px' }}>
 
-        {/* Tab Mesas */}
         {tab === 'mesas' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             {mesas.map(mesa => {
               const cfg = STATUS_CONFIG[mesa.status] || STATUS_CONFIG.disponible
               return (
                 <div key={mesa.id} style={{ background: C.blanco, borderRadius: '16px', padding: '14px', boxShadow: '0 4px 12px rgba(44,37,35,0.04)', borderTop: `4px solid ${cfg.color}` }}>
-
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
                     <div style={{ fontSize: '20px', fontWeight: '700', color: C.textoPrincipal }}>Mesa {mesa.numero}</div>
                     <span style={{ background: cfg.bg, color: cfg.color, fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' }}>
@@ -259,14 +272,12 @@ socket.on('estado_actualizado', ({ orden_id, estado }) => {
                       </button>
                     )}
                   </div>
-
                 </div>
               )
             })}
           </div>
         )}
 
-        {/* Tab Entregas */}
         {tab === 'entregas' && (
           <>
             {ordenesListas.length === 0 && (
@@ -308,11 +319,9 @@ socket.on('estado_actualizado', ({ orden_id, estado }) => {
 
       </div>
 
-      {/* Modal cuenta */}
       {modalCuenta && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(44,37,35,0.5)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div style={{ background: C.blanco, borderRadius: '20px 20px 0 0', padding: '24px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
-
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
                 <div style={{ fontSize: '18px', fontWeight: '700', color: C.textoPrincipal }}>💳 Cuenta · Mesa {modalCuenta.numero}</div>
@@ -348,7 +357,6 @@ socket.on('estado_actualizado', ({ orden_id, estado }) => {
             >
               ✅ Mesa pagada · Liberar
             </button>
-
           </div>
         </div>
       )}
