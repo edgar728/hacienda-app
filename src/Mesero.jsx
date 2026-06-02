@@ -6,19 +6,23 @@ import { io } from 'socket.io-client'
 const socket = io('https://hacienda-servidor-production.up.railway.app')
 
 const C = {
-  rojo: '#C83E23',
-  verde: '#1E5E43',
-  amarillo: '#EAA135',
-  fondo: '#FBF9F6',
-  blanco: '#FFFFFF',
-  textoPrincipal: '#2C2523',
-  textoSecundario: '#8C827E',
+  bg: '#0A0A0A',
+  bg2: '#141414',
+  card: '#1C1C1C',
+  border: '#2A2A2A',
+  gold: '#C9A84C',
+  goldLight: '#E8C97A',
+  silver: '#8A8A8A',
+  text: '#F5F5F5',
+  textSub: '#6B6B6B',
+  success: '#2D6A4F',
+  successLight: '#4CAF50',
 }
 
 const STATUS_CONFIG = {
-  disponible: { color: C.verde, bg: '#E8F5EE', label: 'Disponible', emoji: '✅' },
-  en_espera: { color: C.amarillo, bg: '#FEF3E2', label: 'En espera', emoji: '⏳' },
-  ocupado: { color: C.rojo, bg: '#FDE8E8', label: 'Ocupado', emoji: '🔴' },
+  disponible: { color: '#4CAF50', bg: '#0D2318', border: '#2D6A4F40', label: 'Disponible', emoji: '✅' },
+  en_espera: { color: '#C9A84C', bg: '#1A1400', border: '#C9A84C40', label: 'En espera', emoji: '⏳' },
+  ocupado: { color: '#E57373', bg: '#1A0808', border: '#C0392B40', label: 'Ocupado', emoji: '🔴' },
 }
 
 function generarCodigo() {
@@ -43,7 +47,7 @@ export default function Mesero() {
       setMesas(prev => prev.map(m => m.id === mesa.id ? mesa : m))
     })
 
-    socket.on('estado_actualizado', ({ orden_id, estado, mesa }) => {
+    socket.on('estado_actualizado', ({ orden_id, estado }) => {
       if (estado === 'lista') {
         setTimeout(() => {
           if (restauranteIdRef.current) cargarOrdenesListas(restauranteIdRef.current)
@@ -182,92 +186,103 @@ export default function Mesero() {
   })
 
   if (cargando) return (
-    <div style={{ fontFamily: 'sans-serif', textAlign: 'center', padding: '60px', color: C.textoSecundario, background: C.fondo, minHeight: '100vh' }}>
-      Cargando...
+    <div style={{ fontFamily: "'Segoe UI', sans-serif", background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+      <div style={{ textAlign: 'center' }}>
+        <div style={{ fontSize: '32px', marginBottom: '12px' }}>🛎️</div>
+        <div style={{ fontSize: '14px', color: C.textSub }}>Cargando...</div>
+      </div>
     </div>
   )
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif", maxWidth: '480px', margin: '0 auto', background: C.fondo, minHeight: '100vh' }}>
+    <div style={{ fontFamily: "'Segoe UI', sans-serif", background: C.bg, minHeight: '100vh' }}>
 
-      <div style={{ background: C.blanco, padding: '14px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 8px rgba(44,37,35,0.04)', position: 'sticky', top: 0, zIndex: 50 }}>
-        <div>
-          <div style={{ fontSize: '18px', fontWeight: '700', color: C.textoPrincipal }}>🛎️ Mesero</div>
-          <div style={{ fontSize: '12px', color: C.textoSecundario }}>{slug}</div>
+      {/* Header */}
+      <div style={{ background: C.bg2, borderBottom: `1px solid ${C.border}`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '36px', height: '36px', background: C.card, borderRadius: '10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+            🛎️
+          </div>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: C.text }}>Mesero</div>
+            <div style={{ fontSize: '11px', color: C.gold, letterSpacing: '1px' }}>{slug?.toUpperCase()}</div>
+          </div>
         </div>
         {ordenesListas.length > 0 && (
-          <div style={{ background: C.rojo, color: C.blanco, borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: '700' }}>
-            {ordenesListas.length} para entregar
+          <div style={{ background: '#1A0808', border: '1px solid #C0392B40', borderRadius: '20px', padding: '6px 14px', display: 'flex', alignItems: 'center', gap: '6px' }}>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#E57373' }} />
+            <span style={{ fontSize: '12px', color: '#E57373', fontWeight: '700' }}>{ordenesListas.length} para entregar</span>
           </div>
         )}
       </div>
 
-      <div style={{ background: C.blanco, display: 'flex', borderBottom: '1px solid #F0EBE6' }}>
-        <button
-          onClick={() => setTab('mesas')}
-          style={{ flex: 1, padding: '12px', fontSize: '13px', fontWeight: '600', color: tab === 'mesas' ? C.rojo : C.textoSecundario, background: 'transparent', border: 'none', borderBottom: tab === 'mesas' ? `3px solid ${C.rojo}` : '3px solid transparent', cursor: 'pointer' }}
-        >
-          🪑 Mesas
-        </button>
-        <button
-          onClick={() => setTab('entregas')}
-          style={{ flex: 1, padding: '12px', fontSize: '13px', fontWeight: '600', color: tab === 'entregas' ? C.rojo : C.textoSecundario, background: 'transparent', border: 'none', borderBottom: tab === 'entregas' ? `3px solid ${C.rojo}` : '3px solid transparent', cursor: 'pointer' }}
-        >
-          🍽️ Entregas {ordenesListas.length > 0 && (
-            <span style={{ background: C.rojo, color: C.blanco, borderRadius: '20px', padding: '1px 7px', fontSize: '11px', marginLeft: '4px' }}>
-              {ordenesListas.length}
-            </span>
-          )}
-        </button>
+      {/* Tabs */}
+      <div style={{ background: C.bg2, display: 'flex', borderBottom: `1px solid ${C.border}` }}>
+        {[['mesas', '🪑 Mesas'], ['entregas', '🍽️ Entregas']].map(([id, label]) => (
+          <button
+            key={id}
+            onClick={() => setTab(id)}
+            style={{ flex: 1, padding: '14px', fontSize: '13px', fontWeight: '600', color: tab === id ? C.gold : C.textSub, background: 'transparent', border: 'none', borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent', cursor: 'pointer', position: 'relative' }}
+          >
+            {label}
+            {id === 'entregas' && ordenesListas.length > 0 && (
+              <span style={{ background: '#E57373', color: '#fff', borderRadius: '20px', padding: '1px 7px', fontSize: '10px', marginLeft: '6px', fontWeight: '700' }}>
+                {ordenesListas.length}
+              </span>
+            )}
+          </button>
+        ))}
       </div>
 
       <div style={{ padding: '16px' }}>
 
+        {/* Tab Mesas */}
         {tab === 'mesas' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             {mesas.map(mesa => {
               const cfg = STATUS_CONFIG[mesa.status] || STATUS_CONFIG.disponible
               return (
-                <div key={mesa.id} style={{ background: C.blanco, borderRadius: '16px', padding: '14px', boxShadow: '0 4px 12px rgba(44,37,35,0.04)', borderTop: `4px solid ${cfg.color}` }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
-                    <div style={{ fontSize: '20px', fontWeight: '700', color: C.textoPrincipal }}>Mesa {mesa.numero}</div>
-                    <span style={{ background: cfg.bg, color: cfg.color, fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px' }}>
+                <div key={mesa.id} style={{ background: C.card, borderRadius: '16px', padding: '14px', border: `1px solid ${cfg.border}`, boxShadow: mesa.status === 'ocupado' ? '0 0 16px #C0392B10' : 'none' }}>
+
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+                    <div style={{ fontSize: '18px', fontWeight: '700', color: C.text }}>Mesa {mesa.numero}</div>
+                    <span style={{ background: cfg.bg, color: cfg.color, fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px', border: `1px solid ${cfg.border}` }}>
                       {cfg.emoji} {cfg.label}
                     </span>
                   </div>
 
                   {mesa.status === 'ocupado' && mesa.total_acumulado > 0 && (
-                    <div style={{ background: C.fondo, borderRadius: '8px', padding: '6px 10px', marginBottom: '8px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span style={{ fontSize: '11px', color: C.textoSecundario }}>Total acumulado</span>
-                      <span style={{ fontSize: '14px', fontWeight: '700', color: C.rojo }}>${mesa.total_acumulado}</span>
+                    <div style={{ background: C.bg2, borderRadius: '8px', padding: '8px 10px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${C.border}` }}>
+                      <span style={{ fontSize: '11px', color: C.textSub }}>Total acumulado</span>
+                      <span style={{ fontSize: '15px', fontWeight: '700', color: C.gold }}>${mesa.total_acumulado}</span>
                     </div>
                   )}
 
                   {mesa.status === 'en_espera' && mesa.codigo && (
-                    <div style={{ background: '#FEF3E2', borderRadius: '10px', padding: '8px', marginBottom: '8px', textAlign: 'center' }}>
-                      <div style={{ fontSize: '10px', color: C.amarillo, fontWeight: '600', marginBottom: '2px' }}>CÓDIGO</div>
-                      <div style={{ fontSize: '22px', fontWeight: '700', color: C.textoPrincipal, letterSpacing: '4px' }}>{mesa.codigo}</div>
+                    <div style={{ background: '#1A1400', borderRadius: '10px', padding: '10px', marginBottom: '10px', textAlign: 'center', border: `1px solid ${C.gold}30` }}>
+                      <div style={{ fontSize: '10px', color: C.gold, fontWeight: '700', marginBottom: '4px', letterSpacing: '2px' }}>CÓDIGO DE ACCESO</div>
+                      <div style={{ fontSize: '24px', fontWeight: '700', color: C.text, letterSpacing: '6px', fontFamily: 'monospace' }}>{mesa.codigo}</div>
                     </div>
                   )}
 
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {mesa.status === 'disponible' && (
-                      <button onClick={() => cambiarStatusMesa(mesa, 'en_espera')} style={{ width: '100%', background: '#FEF3E2', color: C.amarillo, border: 'none', borderRadius: '8px', padding: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
+                      <button onClick={() => cambiarStatusMesa(mesa, 'en_espera')} style={{ width: '100%', background: '#1A1400', color: C.gold, border: `1px solid ${C.gold}40`, borderRadius: '8px', padding: '9px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', letterSpacing: '0.5px' }}>
                         ⏳ Sentar clientes
                       </button>
                     )}
                     {mesa.status === 'en_espera' && (
                       <>
-                        <button onClick={() => cambiarStatusMesa(mesa, 'ocupado')} style={{ width: '100%', background: '#FDE8E8', color: C.rojo, border: 'none', borderRadius: '8px', padding: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
+                        <button onClick={() => cambiarStatusMesa(mesa, 'ocupado')} style={{ width: '100%', background: '#1A0808', color: '#E57373', border: '1px solid #C0392B40', borderRadius: '8px', padding: '9px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
                           🔴 Marcar ocupada
                         </button>
-                        <button onClick={() => cambiarStatusMesa(mesa, 'disponible')} style={{ width: '100%', background: '#E8F5EE', color: C.verde, border: 'none', borderRadius: '8px', padding: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
+                        <button onClick={() => cambiarStatusMesa(mesa, 'disponible')} style={{ width: '100%', background: '#0D2318', color: '#4CAF50', border: '1px solid #2D6A4F40', borderRadius: '8px', padding: '9px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
                           ✅ Liberar
                         </button>
                       </>
                     )}
                     {mesa.status === 'ocupado' && (
-                      <button onClick={() => abrirCuenta(mesa)} style={{ width: '100%', background: C.rojo, color: C.blanco, border: 'none', borderRadius: '8px', padding: '8px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
+                      <button onClick={() => abrirCuenta(mesa)} style={{ width: '100%', background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '8px', padding: '9px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
                         💳 Generar cuenta
                       </button>
                     )}
@@ -278,37 +293,38 @@ export default function Mesero() {
           </div>
         )}
 
+        {/* Tab Entregas */}
         {tab === 'entregas' && (
           <>
             {ordenesListas.length === 0 && (
               <div style={{ textAlign: 'center', padding: '60px 20px' }}>
-                <div style={{ fontSize: '48px', marginBottom: '12px' }}>✅</div>
-                <div style={{ fontSize: '16px', fontWeight: '600', color: C.textoPrincipal, marginBottom: '6px' }}>Todo entregado</div>
-                <div style={{ fontSize: '14px', color: C.textoSecundario }}>No hay órdenes listas por entregar</div>
+                <div style={{ fontSize: '48px', marginBottom: '12px', opacity: 0.3 }}>✅</div>
+                <div style={{ fontSize: '16px', fontWeight: '600', color: C.text, marginBottom: '6px' }}>Todo entregado</div>
+                <div style={{ fontSize: '13px', color: C.textSub }}>No hay órdenes listas por entregar</div>
               </div>
             )}
             {ordenesListas.map(o => (
-              <div key={o.id} style={{ background: C.blanco, borderRadius: '16px', padding: '16px', marginBottom: '12px', boxShadow: '0 4px 12px rgba(44,37,35,0.06)', borderLeft: `4px solid ${C.verde}` }}>
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+              <div key={o.id} style={{ background: C.card, borderRadius: '16px', padding: '16px', marginBottom: '12px', border: `1px solid #2D6A4F40`, boxShadow: '0 0 16px #2D6A4F10' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <div>
-                    <div style={{ fontSize: '20px', fontWeight: '700', color: C.textoPrincipal }}>Mesa {o.mesa}</div>
-                    <div style={{ fontSize: '12px', color: C.textoSecundario }}>Orden #{o.id}</div>
+                    <div style={{ fontSize: '20px', fontWeight: '700', color: C.text }}>Mesa {o.mesa}</div>
+                    <div style={{ fontSize: '11px', color: C.textSub }}>Orden #{o.id}</div>
                   </div>
-                  <div style={{ background: '#E8F5EE', color: C.verde, borderRadius: '20px', padding: '4px 12px', fontSize: '12px', fontWeight: '700' }}>
+                  <div style={{ background: '#0D2318', color: '#4CAF50', borderRadius: '20px', padding: '5px 12px', fontSize: '12px', fontWeight: '700', border: '1px solid #2D6A4F40' }}>
                     ✓ Lista
                   </div>
                 </div>
-                <div style={{ borderTop: `1px dashed #E5DFD9`, paddingTop: '10px', marginBottom: '12px' }}>
+                <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: '10px', marginBottom: '14px' }}>
                   {o.orden_items?.map((item, i) => (
-                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '13px', color: C.textoPrincipal, padding: '3px 0' }}>
+                    <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '13px', color: C.text, padding: '4px 0' }}>
                       <span>🍽️ {item.nombre}</span>
-                      <span style={{ color: C.textoSecundario }}>x{item.cantidad}</span>
+                      <span style={{ color: C.gold, fontWeight: '600', background: C.gold + '15', padding: '2px 8px', borderRadius: '20px', fontSize: '12px' }}>x{item.cantidad}</span>
                     </div>
                   ))}
                 </div>
                 <button
                   onClick={() => marcarEntregada(o.id, o, Number(o.total))}
-                  style={{ width: '100%', background: C.verde, color: C.blanco, border: 'none', borderRadius: '100px', padding: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(30,94,67,0.25)' }}
+                  style={{ width: '100%', background: 'linear-gradient(135deg, #2D6A4F, #3D8A6F)', color: '#fff', border: 'none', borderRadius: '10px', padding: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
                 >
                   ✓ Entregar a Mesa {o.mesa}
                 </button>
@@ -319,44 +335,44 @@ export default function Mesero() {
 
       </div>
 
+      {/* Modal cuenta */}
       {modalCuenta && (
-        <div style={{ position: 'fixed', inset: 0, background: 'rgba(44,37,35,0.5)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
-          <div style={{ background: C.blanco, borderRadius: '20px 20px 0 0', padding: '24px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto' }}>
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
+          <div style={{ background: C.bg2, borderRadius: '20px 20px 0 0', padding: '24px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.border}`, borderBottom: 'none' }}>
+
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div>
-                <div style={{ fontSize: '18px', fontWeight: '700', color: C.textoPrincipal }}>💳 Cuenta · Mesa {modalCuenta.numero}</div>
-                <div style={{ fontSize: '12px', color: C.textoSecundario }}>{ordenesModal.length} órdenes</div>
+                <div style={{ fontSize: '18px', fontWeight: '700', color: C.text }}>💳 Cuenta · Mesa {modalCuenta.numero}</div>
+                <div style={{ fontSize: '12px', color: C.textSub, marginTop: '2px' }}>{ordenesModal.length} órdenes</div>
               </div>
-              <button onClick={() => setModalCuenta(null)} style={{ background: C.fondo, border: 'none', borderRadius: '10px', padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: C.textoSecundario }}>✕</button>
+              <button onClick={() => setModalCuenta(null)} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: '10px', padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: C.silver }}>✕</button>
             </div>
 
-            <div style={{ background: C.fondo, borderRadius: '14px', padding: '16px', marginBottom: '16px' }}>
-              <div style={{ fontSize: '12px', fontWeight: '600', color: C.textoSecundario, marginBottom: '12px' }}>RESUMEN</div>
+            <div style={{ background: C.card, borderRadius: '14px', padding: '16px', marginBottom: '14px', border: `1px solid ${C.border}` }}>
+              <div style={{ fontSize: '11px', fontWeight: '700', color: C.textSub, letterSpacing: '2px', marginBottom: '12px' }}>RESUMEN</div>
               {Object.values(itemsCuenta).map(item => (
-                <div key={item.nombre} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 0', borderBottom: '1px dashed #E5DFD9' }}>
+                <div key={item.nombre} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 0', borderBottom: `1px solid ${C.border}` }}>
                   <div>
-                    <div style={{ fontSize: '13px', fontWeight: '500', color: C.textoPrincipal }}>{item.nombre}</div>
-                    <div style={{ fontSize: '11px', color: C.textoSecundario }}>${item.precio} c/u</div>
+                    <div style={{ fontSize: '13px', fontWeight: '500', color: C.text }}>{item.nombre}</div>
+                    <div style={{ fontSize: '11px', color: C.textSub }}>${item.precio} c/u · x{item.cantidad}</div>
                   </div>
-                  <div style={{ textAlign: 'right' }}>
-                    <div style={{ fontSize: '12px', color: C.textoSecundario }}>x{item.cantidad}</div>
-                    <div style={{ fontSize: '13px', fontWeight: '700', color: C.textoPrincipal }}>${item.precio * item.cantidad}</div>
-                  </div>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: C.gold }}>${item.precio * item.cantidad}</div>
                 </div>
               ))}
             </div>
 
-            <div style={{ background: C.rojo, borderRadius: '14px', padding: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <span style={{ fontSize: '16px', fontWeight: '700', color: C.blanco }}>TOTAL</span>
-              <span style={{ fontSize: '24px', fontWeight: '700', color: C.blanco }}>${totalCuenta}</span>
+            <div style={{ background: `linear-gradient(135deg, ${C.gold}20, ${C.goldLight}10)`, borderRadius: '14px', padding: '16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${C.gold}40` }}>
+              <span style={{ fontSize: '14px', fontWeight: '700', color: C.gold, letterSpacing: '1px' }}>TOTAL</span>
+              <span style={{ fontSize: '28px', fontWeight: '700', color: C.text }}>${totalCuenta}</span>
             </div>
 
             <button
               onClick={() => cobrarMesa(modalCuenta)}
-              style={{ width: '100%', background: C.verde, color: C.blanco, border: 'none', borderRadius: '100px', padding: '16px', fontSize: '16px', fontWeight: '700', cursor: 'pointer', boxShadow: '0 4px 12px rgba(30,94,67,0.25)' }}
+              style={{ width: '100%', background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '12px', padding: '16px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', letterSpacing: '0.5px' }}
             >
               ✅ Mesa pagada · Liberar
             </button>
+
           </div>
         </div>
       )}

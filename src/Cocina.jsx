@@ -5,60 +5,132 @@ import { useParams } from 'react-router-dom'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
 
+const C = {
+  bg: '#0A0A0A',
+  bg2: '#141414',
+  card: '#1C1C1C',
+  border: '#2A2A2A',
+  gold: '#C9A84C',
+  goldLight: '#E8C97A',
+  silver: '#8A8A8A',
+  text: '#F5F5F5',
+  textSub: '#6B6B6B',
+  success: '#2D6A4F',
+  successBg: '#0D2318',
+  warning: '#B8860B',
+  warningBg: '#1A1400',
+  danger: '#C0392B',
+  dangerBg: '#1A0808',
+}
+
 const ESTADOS = ['recibida', 'preparando', 'lista']
-const COLORES = {
-  recibida: { bg: '#E6F1FB', color: '#0C447C', label: 'Nueva' },
-  preparando: { bg: '#FAEEDA', color: '#633806', label: 'Preparando' },
-  lista: { bg: '#EAF3DE', color: '#27500A', label: 'Lista' },
+
+function Temporizador({ createdAt }) {
+  const [segundos, setSegundos] = useState(0)
+
+  useEffect(() => {
+    const inicio = new Date(createdAt).getTime()
+    const actualizar = () => setSegundos(Math.floor((Date.now() - inicio) / 1000))
+    actualizar()
+    const interval = setInterval(actualizar, 1000)
+    return () => clearInterval(interval)
+  }, [createdAt])
+
+  const mins = Math.floor(segundos / 60)
+  const segs = segundos % 60
+  const urgente = mins >= 15
+  const warning = mins >= 8
+
+  return (
+    <span style={{
+      fontSize: '13px',
+      fontWeight: '700',
+      color: urgente ? '#E57373' : warning ? C.gold : C.silver,
+      fontFamily: 'monospace',
+      letterSpacing: '1px'
+    }}>
+      {String(mins).padStart(2, '0')}:{String(segs).padStart(2, '0')}
+    </span>
+  )
 }
 
 function TarjetaOrden({ orden, onActualizar }) {
-  async function cambiarEstado(nuevoEstado) {
-    await supabase
-      .from('ordenes')
-      .update({ estado: nuevoEstado })
-      .eq('id', orden.id)
+  const siguienteEstado = ESTADOS[ESTADOS.indexOf(orden.estado) + 1]
+  const esNueva = orden.estado === 'recibida'
+  const esPreparando = orden.estado === 'preparando'
 
+  async function cambiarEstado(nuevoEstado) {
+    await supabase.from('ordenes').update({ estado: nuevoEstado }).eq('id', orden.id)
     socket.emit('actualizar_estado', { orden_id: orden.id, estado: nuevoEstado, mesa: orden.mesa })
     onActualizar(orden.id, nuevoEstado)
   }
 
-  const c = COLORES[orden.estado] || COLORES.recibida
-  const siguienteEstado = ESTADOS[ESTADOS.indexOf(orden.estado) + 1]
-
   return (
-    <div style={{ background: 'white', border: `2px solid ${c.bg}`, borderRadius: '12px', padding: '14px', marginBottom: '10px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
+    <div style={{
+      background: C.card,
+      borderRadius: '16px',
+      padding: '16px',
+      marginBottom: '12px',
+      border: `1px solid ${esNueva ? C.gold + '40' : C.border}`,
+      boxShadow: esNueva ? `0 0 20px ${C.gold}15` : 'none',
+      position: 'relative',
+      overflow: 'hidden'
+    }}>
+      {esNueva && (
+        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})` }} />
+      )}
+
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
         <div>
-          <span style={{ fontWeight: '600', fontSize: '15px' }}>Mesa {orden.mesa}</span>
-          <span style={{ fontSize: '12px', color: '#888', marginLeft: '8px' }}>#{orden.id}</span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+            <span style={{ fontSize: '18px', fontWeight: '700', color: C.text }}>Mesa {orden.mesa}</span>
+            {esNueva && (
+              <span style={{ background: C.gold, color: '#0A0A0A', fontSize: '9px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px', letterSpacing: '1px' }}>
+                NUEVA
+              </span>
+            )}
+          </div>
+          <span style={{ fontSize: '11px', color: C.textSub }}>#{orden.id}</span>
         </div>
-        <span style={{ background: c.bg, color: c.color, fontSize: '11px', fontWeight: '500', padding: '3px 10px', borderRadius: '20px' }}>
-          {c.label}
-        </span>
+        <div style={{ textAlign: 'right' }}>
+          <Temporizador createdAt={orden.created_at} />
+          <div style={{ fontSize: '10px', color: C.textSub, marginTop: '2px' }}>tiempo</div>
+        </div>
       </div>
 
-      <div style={{ marginBottom: '10px' }}>
+      <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: '10px', marginBottom: '12px' }}>
         {orden.orden_items?.map((item, i) => (
-          <div key={i} style={{ fontSize: '13px', color: '#444', padding: '3px 0', borderBottom: '0.5px solid #f0f0f0', display: 'flex', justifyContent: 'space-between' }}>
-            <span>{item.emoji || '🍽️'} {item.nombre}</span>
-            <span style={{ color: '#888' }}>x{item.cantidad}</span>
+          <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: `1px solid ${C.border}20` }}>
+            <span style={{ fontSize: '13px', color: C.text }}>{item.emoji || '🍽️'} {item.nombre}</span>
+            <span style={{ fontSize: '12px', fontWeight: '600', color: C.gold, background: C.gold + '15', padding: '2px 8px', borderRadius: '20px' }}>x{item.cantidad}</span>
           </div>
         ))}
       </div>
 
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: '13px', fontWeight: '500', color: '#27500A' }}>${orden.total}</span>
+        <span style={{ fontSize: '13px', fontWeight: '600', color: C.silver }}>${orden.total}</span>
         {siguienteEstado && (
           <button
             onClick={() => cambiarEstado(siguienteEstado)}
-            style={{ background: '#185FA5', color: 'white', border: 'none', borderRadius: '8px', padding: '6px 14px', fontSize: '12px', fontWeight: '500', cursor: 'pointer' }}
+            style={{
+              background: siguienteEstado === 'preparando'
+                ? `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`
+                : `linear-gradient(135deg, #2D6A4F, #3D8A6F)`,
+              color: siguienteEstado === 'preparando' ? '#0A0A0A' : '#fff',
+              border: 'none',
+              borderRadius: '10px',
+              padding: '8px 16px',
+              fontSize: '12px',
+              fontWeight: '700',
+              cursor: 'pointer',
+              letterSpacing: '0.5px'
+            }}
           >
             {siguienteEstado === 'preparando' ? '👨‍🍳 Iniciar' : '✅ Lista'}
           </button>
         )}
         {!siguienteEstado && (
-          <span style={{ fontSize: '12px', color: '#27500A', fontWeight: '500' }}>✅ Entregada</span>
+          <span style={{ fontSize: '12px', color: C.success, fontWeight: '600' }}>✅ Entregada</span>
         )}
       </div>
     </div>
@@ -102,6 +174,8 @@ export default function Cocina() {
       .select('*, orden_items(*)')
       .eq('restaurante_id', rest.id)
       .neq('estado', 'lista')
+      .neq('estado', 'entregada')
+      .neq('estado', 'pagada')
       .order('created_at', { ascending: false })
 
     const ordenesFiltered = (data || []).map(o => ({
@@ -120,32 +194,80 @@ export default function Cocina() {
   const preparando = ordenes.filter(o => o.estado === 'preparando')
 
   return (
-    <div style={{ fontFamily: 'sans-serif', padding: '16px', background: '#f5f5f5', minHeight: '100vh' }}>
-      <div style={{ background: '#0C447C', color: 'white', borderRadius: '12px', padding: '14px 16px', marginBottom: '16px', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <div>
-          <div style={{ fontWeight: '600', fontSize: '16px' }}>🍳 Cocina · {slug}</div>
-          <div style={{ fontSize: '12px', opacity: 0.8, marginTop: '2px' }}>{ordenes.length} órdenes activas</div>
+    <div style={{ fontFamily: "'Segoe UI', sans-serif", background: C.bg, minHeight: '100vh' }}>
+
+      {/* Header */}
+      <div style={{ background: C.bg2, borderBottom: `1px solid ${C.border}`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ width: '36px', height: '36px', background: C.card, borderRadius: '10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
+            🍳
+          </div>
+          <div>
+            <div style={{ fontSize: '15px', fontWeight: '700', color: C.text }}>Cocina</div>
+            <div style={{ fontSize: '11px', color: C.gold, letterSpacing: '1px' }}>{slug?.toUpperCase()}</div>
+          </div>
         </div>
-        <div style={{ background: '#1D9E75', borderRadius: '20px', padding: '4px 10px', fontSize: '11px', fontWeight: '500' }}>
-          ● En vivo
+        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ textAlign: 'right' }}>
+            <div style={{ fontSize: '20px', fontWeight: '700', color: C.text }}>{ordenes.length}</div>
+            <div style={{ fontSize: '10px', color: C.textSub, letterSpacing: '1px' }}>ACTIVAS</div>
+          </div>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0D2318', border: `1px solid ${C.success}40`, borderRadius: '20px', padding: '6px 12px' }}>
+            <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4CAF50' }} />
+            <span style={{ fontSize: '11px', color: '#4CAF50', fontWeight: '600', letterSpacing: '1px' }}>EN VIVO</span>
+          </div>
         </div>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
-        <div>
-          <p style={{ fontSize: '11px', fontWeight: '500', color: '#888', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '8px' }}>
-            🔵 Nuevas ({nuevas.length})
-          </p>
-          {nuevas.length === 0 && <div style={{ fontSize: '13px', color: '#bbb', textAlign: 'center', padding: '20px' }}>Sin órdenes nuevas</div>}
+      {/* Stats bar */}
+      <div style={{ background: C.bg2, borderBottom: `1px solid ${C.border}`, padding: '10px 20px', display: 'flex', gap: '20px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: C.gold }} />
+          <span style={{ fontSize: '12px', color: C.silver }}>Nuevas</span>
+          <span style={{ fontSize: '14px', fontWeight: '700', color: C.gold }}>{nuevas.length}</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: '#E8A020' }} />
+          <span style={{ fontSize: '12px', color: C.silver }}>Preparando</span>
+          <span style={{ fontSize: '14px', fontWeight: '700', color: '#E8A020' }}>{preparando.length}</span>
+        </div>
+      </div>
+
+      {/* Columnas */}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border, minHeight: 'calc(100vh - 110px)' }}>
+
+        {/* Nuevas */}
+        <div style={{ background: C.bg, padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+            <div style={{ width: '3px', height: '16px', background: C.gold, borderRadius: '2px' }} />
+            <span style={{ fontSize: '11px', fontWeight: '700', color: C.gold, letterSpacing: '2px', textTransform: 'uppercase' }}>Nuevas</span>
+            <span style={{ background: C.gold + '20', color: C.gold, fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px' }}>{nuevas.length}</span>
+          </div>
+          {nuevas.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px', opacity: 0.3 }}>🍽️</div>
+              <div style={{ fontSize: '12px', color: C.textSub }}>Sin órdenes nuevas</div>
+            </div>
+          )}
           {nuevas.map(o => <TarjetaOrden key={o.id} orden={o} onActualizar={actualizarEstado} />)}
         </div>
-        <div>
-          <p style={{ fontSize: '11px', fontWeight: '500', color: '#888', letterSpacing: '0.06em', textTransform: 'uppercase', marginBottom: '8px' }}>
-            🟡 Preparando ({preparando.length})
-          </p>
-          {preparando.length === 0 && <div style={{ fontSize: '13px', color: '#bbb', textAlign: 'center', padding: '20px' }}>Nada en preparación</div>}
+
+        {/* Preparando */}
+        <div style={{ background: C.bg, padding: '16px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
+            <div style={{ width: '3px', height: '16px', background: '#E8A020', borderRadius: '2px' }} />
+            <span style={{ fontSize: '11px', fontWeight: '700', color: '#E8A020', letterSpacing: '2px', textTransform: 'uppercase' }}>Preparando</span>
+            <span style={{ background: '#E8A02020', color: '#E8A020', fontSize: '11px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px' }}>{preparando.length}</span>
+          </div>
+          {preparando.length === 0 && (
+            <div style={{ textAlign: 'center', padding: '40px 20px' }}>
+              <div style={{ fontSize: '32px', marginBottom: '8px', opacity: 0.3 }}>👨‍🍳</div>
+              <div style={{ fontSize: '12px', color: C.textSub }}>Nada en preparación</div>
+            </div>
+          )}
           {preparando.map(o => <TarjetaOrden key={o.id} orden={o} onActualizar={actualizarEstado} />)}
         </div>
+
       </div>
     </div>
   )
