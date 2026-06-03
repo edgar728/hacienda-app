@@ -175,6 +175,92 @@ export default function Mesero() {
     setOrdenesModal([])
   }
 
+  function imprimirTicket() {
+    const fecha = new Date().toLocaleString('es-MX', {
+      day: '2-digit', month: '2-digit', year: 'numeric',
+      hour: '2-digit', minute: '2-digit'
+    })
+
+    const itemsHtml = Object.values(itemsCuenta).map(item => `
+      <tr>
+        <td style="padding:5px 0;">${item.nombre}</td>
+        <td style="text-align:center;padding:5px 8px;">x${item.cantidad}</td>
+        <td style="text-align:right;padding:5px 0;">$${item.precio * item.cantidad}</td>
+      </tr>
+    `).join('')
+
+    const html = `
+      <!DOCTYPE html>
+      <html>
+      <head>
+        <meta charset="UTF-8">
+        <title>Ticket · Mesa ${modalCuenta.numero}</title>
+        <style>
+          * { margin: 0; padding: 0; box-sizing: border-box; }
+          body {
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            color: #000;
+            width: 280px;
+            margin: 0 auto;
+            padding: 20px 8px;
+          }
+          .center { text-align: center; }
+          .bold { font-weight: bold; }
+          .large { font-size: 18px; }
+          .divider { border-top: 1px dashed #000; margin: 10px 0; }
+          table { width: 100%; border-collapse: collapse; }
+          td, th { vertical-align: top; }
+          .footer { font-size: 11px; color: #555; text-align: center; margin-top: 10px; }
+          @media print {
+            body { width: 100%; }
+          }
+        </style>
+      </head>
+      <body>
+        <div class="center bold large" style="margin-bottom:2px;">${slug?.toUpperCase()}</div>
+        <div class="center" style="font-size:11px;margin-bottom:2px;">Order Moreno</div>
+        <div class="center" style="font-size:10px;color:#777;">Moreno Technology</div>
+        <div class="divider"></div>
+        <div style="margin-bottom:3px;"><span class="bold">Mesa:</span> ${modalCuenta.numero}</div>
+        <div style="margin-bottom:3px;"><span class="bold">Fecha:</span> ${fecha}</div>
+        <div style="margin-bottom:3px;"><span class="bold">Folio:</span> #${Date.now().toString().slice(-6)}</div>
+        <div class="divider"></div>
+        <table>
+          <thead>
+            <tr>
+              <th style="text-align:left;padding-bottom:6px;border-bottom:1px solid #000;">Platillo</th>
+              <th style="text-align:center;padding-bottom:6px;border-bottom:1px solid #000;">Cant</th>
+              <th style="text-align:right;padding-bottom:6px;border-bottom:1px solid #000;">Total</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${itemsHtml}
+          </tbody>
+        </table>
+        <div class="divider"></div>
+        <table>
+          <tr>
+            <td class="bold" style="font-size:15px;">TOTAL A PAGAR</td>
+            <td style="text-align:right;font-size:18px;font-weight:bold;">$${totalCuenta}</td>
+          </tr>
+        </table>
+        <div class="divider"></div>
+        <div class="footer">
+          <div style="font-size:13px;font-weight:bold;margin-bottom:4px;">¡Gracias por su visita!</div>
+          <div>Powered by Moreno Technology</div>
+        </div>
+      </body>
+      </html>
+    `
+
+    const ventana = window.open('', '_blank', 'width=320,height=600')
+    ventana.document.write(html)
+    ventana.document.close()
+    ventana.focus()
+    setTimeout(() => ventana.print(), 500)
+  }
+
   const totalCuenta = ordenesModal.reduce((acc, o) => acc + Number(o.total), 0)
   const itemsCuenta = {}
   ordenesModal.forEach(o => {
@@ -197,12 +283,9 @@ export default function Mesero() {
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", background: C.bg, minHeight: '100vh' }}>
 
-      {/* Header */}
       <div style={{ background: C.bg2, borderBottom: `1px solid ${C.border}`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '36px', height: '36px', background: C.card, borderRadius: '10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-            🛎️
-          </div>
+          <div style={{ width: '36px', height: '36px', background: C.card, borderRadius: '10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>🛎️</div>
           <div>
             <div style={{ fontSize: '15px', fontWeight: '700', color: C.text }}>Mesero</div>
             <div style={{ fontSize: '11px', color: C.gold, letterSpacing: '1px' }}>{slug?.toUpperCase()}</div>
@@ -216,13 +299,10 @@ export default function Mesero() {
         )}
       </div>
 
-      {/* Tabs */}
       <div style={{ background: C.bg2, display: 'flex', borderBottom: `1px solid ${C.border}` }}>
         {[['mesas', '🪑 Mesas'], ['entregas', '🍽️ Entregas']].map(([id, label]) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            style={{ flex: 1, padding: '14px', fontSize: '13px', fontWeight: '600', color: tab === id ? C.gold : C.textSub, background: 'transparent', border: 'none', borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent', cursor: 'pointer', position: 'relative' }}
+          <button key={id} onClick={() => setTab(id)}
+            style={{ flex: 1, padding: '14px', fontSize: '13px', fontWeight: '600', color: tab === id ? C.gold : C.textSub, background: 'transparent', border: 'none', borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent', cursor: 'pointer' }}
           >
             {label}
             {id === 'entregas' && ordenesListas.length > 0 && (
@@ -236,38 +316,33 @@ export default function Mesero() {
 
       <div style={{ padding: '16px' }}>
 
-        {/* Tab Mesas */}
         {tab === 'mesas' && (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
             {mesas.map(mesa => {
               const cfg = STATUS_CONFIG[mesa.status] || STATUS_CONFIG.disponible
               return (
                 <div key={mesa.id} style={{ background: C.card, borderRadius: '16px', padding: '14px', border: `1px solid ${cfg.border}`, boxShadow: mesa.status === 'ocupado' ? '0 0 16px #C0392B10' : 'none' }}>
-
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '10px' }}>
                     <div style={{ fontSize: '18px', fontWeight: '700', color: C.text }}>Mesa {mesa.numero}</div>
                     <span style={{ background: cfg.bg, color: cfg.color, fontSize: '10px', fontWeight: '700', padding: '3px 8px', borderRadius: '20px', border: `1px solid ${cfg.border}` }}>
                       {cfg.emoji} {cfg.label}
                     </span>
                   </div>
-
                   {mesa.status === 'ocupado' && mesa.total_acumulado > 0 && (
                     <div style={{ background: C.bg2, borderRadius: '8px', padding: '8px 10px', marginBottom: '10px', display: 'flex', justifyContent: 'space-between', alignItems: 'center', border: `1px solid ${C.border}` }}>
                       <span style={{ fontSize: '11px', color: C.textSub }}>Total acumulado</span>
                       <span style={{ fontSize: '15px', fontWeight: '700', color: C.gold }}>${mesa.total_acumulado}</span>
                     </div>
                   )}
-
                   {mesa.status === 'en_espera' && mesa.codigo && (
                     <div style={{ background: '#1A1400', borderRadius: '10px', padding: '10px', marginBottom: '10px', textAlign: 'center', border: `1px solid ${C.gold}30` }}>
                       <div style={{ fontSize: '10px', color: C.gold, fontWeight: '700', marginBottom: '4px', letterSpacing: '2px' }}>CÓDIGO DE ACCESO</div>
                       <div style={{ fontSize: '24px', fontWeight: '700', color: C.text, letterSpacing: '6px', fontFamily: 'monospace' }}>{mesa.codigo}</div>
                     </div>
                   )}
-
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
                     {mesa.status === 'disponible' && (
-                      <button onClick={() => cambiarStatusMesa(mesa, 'en_espera')} style={{ width: '100%', background: '#1A1400', color: C.gold, border: `1px solid ${C.gold}40`, borderRadius: '8px', padding: '9px', fontSize: '12px', fontWeight: '700', cursor: 'pointer', letterSpacing: '0.5px' }}>
+                      <button onClick={() => cambiarStatusMesa(mesa, 'en_espera')} style={{ width: '100%', background: '#1A1400', color: C.gold, border: `1px solid ${C.gold}40`, borderRadius: '8px', padding: '9px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
                         ⏳ Sentar clientes
                       </button>
                     )}
@@ -293,7 +368,6 @@ export default function Mesero() {
           </div>
         )}
 
-        {/* Tab Entregas */}
         {tab === 'entregas' && (
           <>
             {ordenesListas.length === 0 && (
@@ -304,15 +378,13 @@ export default function Mesero() {
               </div>
             )}
             {ordenesListas.map(o => (
-              <div key={o.id} style={{ background: C.card, borderRadius: '16px', padding: '16px', marginBottom: '12px', border: `1px solid #2D6A4F40`, boxShadow: '0 0 16px #2D6A4F10' }}>
+              <div key={o.id} style={{ background: C.card, borderRadius: '16px', padding: '16px', marginBottom: '12px', border: `1px solid #2D6A4F40` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
                   <div>
                     <div style={{ fontSize: '20px', fontWeight: '700', color: C.text }}>Mesa {o.mesa}</div>
                     <div style={{ fontSize: '11px', color: C.textSub }}>Orden #{o.id}</div>
                   </div>
-                  <div style={{ background: '#0D2318', color: '#4CAF50', borderRadius: '20px', padding: '5px 12px', fontSize: '12px', fontWeight: '700', border: '1px solid #2D6A4F40' }}>
-                    ✓ Lista
-                  </div>
+                  <div style={{ background: '#0D2318', color: '#4CAF50', borderRadius: '20px', padding: '5px 12px', fontSize: '12px', fontWeight: '700', border: '1px solid #2D6A4F40' }}>✓ Lista</div>
                 </div>
                 <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: '10px', marginBottom: '14px' }}>
                   {o.orden_items?.map((item, i) => (
@@ -322,10 +394,8 @@ export default function Mesero() {
                     </div>
                   ))}
                 </div>
-                <button
-                  onClick={() => marcarEntregada(o.id, o, Number(o.total))}
-                  style={{ width: '100%', background: 'linear-gradient(135deg, #2D6A4F, #3D8A6F)', color: '#fff', border: 'none', borderRadius: '10px', padding: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
-                >
+                <button onClick={() => marcarEntregada(o.id, o, Number(o.total))}
+                  style={{ width: '100%', background: 'linear-gradient(135deg, #2D6A4F, #3D8A6F)', color: '#fff', border: 'none', borderRadius: '10px', padding: '12px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
                   ✓ Entregar a Mesa {o.mesa}
                 </button>
               </div>
@@ -335,7 +405,6 @@ export default function Mesero() {
 
       </div>
 
-      {/* Modal cuenta */}
       {modalCuenta && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div style={{ background: C.bg2, borderRadius: '20px 20px 0 0', padding: '24px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.border}`, borderBottom: 'none' }}>
@@ -366,12 +435,20 @@ export default function Mesero() {
               <span style={{ fontSize: '28px', fontWeight: '700', color: C.text }}>${totalCuenta}</span>
             </div>
 
-            <button
-              onClick={() => cobrarMesa(modalCuenta)}
-              style={{ width: '100%', background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '12px', padding: '16px', fontSize: '15px', fontWeight: '700', cursor: 'pointer', letterSpacing: '0.5px' }}
-            >
-              ✅ Mesa pagada · Liberar
-            </button>
+            <div style={{ display: 'flex', gap: '10px' }}>
+              <button
+                onClick={imprimirTicket}
+                style={{ flex: 1, background: C.card, color: C.gold, border: `1px solid ${C.gold}40`, borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
+              >
+                🖨️ Imprimir
+              </button>
+              <button
+                onClick={() => cobrarMesa(modalCuenta)}
+                style={{ flex: 2, background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
+              >
+                ✅ Mesa pagada · Liberar
+              </button>
+            </div>
 
           </div>
         </div>
