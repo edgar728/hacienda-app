@@ -266,7 +266,7 @@ function MenuMesa() {
           </div>
         ))}
 
-        <Chatbot platillos={platillos} />
+        
       </div>
 
       {/* Botón ordenar */}

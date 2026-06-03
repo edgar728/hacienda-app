@@ -4,25 +4,29 @@ import { io } from 'socket.io-client'
 const socket = io('https://hacienda-servidor-production.up.railway.app')
 
 const C = {
-  rojo: '#C83E23',
-  verde: '#1E5E43',
-  fondo: '#FBF9F6',
-  blanco: '#FFFFFF',
-  textoPrincipal: '#2C2523',
-  textoSecundario: '#8C827E',
-  fondoInactivo: '#F0EBE6',
+  bg: '#0A0A0A',
+  bg2: '#141414',
+  card: '#1C1C1C',
+  border: '#2A2A2A',
+  gold: '#C9A84C',
+  goldLight: '#E8C97A',
+  silver: '#8A8A8A',
+  text: '#F5F5F5',
+  textSub: '#6B6B6B',
+  success: '#2D6A4F',
+  successLight: '#4CAF50',
 }
 
 const PASOS = [
-  { estado: 'recibida', label: 'Recibida', emoji: '📋' },
-  { estado: 'preparando', label: 'Preparando', emoji: '👨‍🍳' },
-  { estado: 'lista', label: '¡Lista!', emoji: '✅' },
+  { estado: 'recibida', label: 'Recibida', icon: '📋' },
+  { estado: 'preparando', label: 'Preparando', icon: '👨‍🍳' },
+  { estado: 'lista', label: '¡Lista!', icon: '✅' },
 ]
 
 const MENSAJES = {
-  recibida: { titulo: 'Orden recibida', sub: 'Tu orden está en la fila, en breve el chef comienza.' },
-  preparando: { titulo: 'El chef está cocinando', sub: 'Paciencia, pronto estará lista tu orden.' },
-  lista: { titulo: '¡Tu orden está lista!', sub: 'El mesero va en camino a tu mesa.' },
+  recibida: { titulo: 'Orden recibida', sub: 'Tu orden está en la fila, en breve el chef comienza.', icon: '📋' },
+  preparando: { titulo: 'El chef está cocinando', sub: 'Paciencia, tu orden está en preparación.', icon: '👨‍🍳' },
+  lista: { titulo: '¡Tu orden está lista!', sub: 'El mesero va en camino a tu mesa.', icon: '🎉' },
 }
 
 export default function Tracker({ mesa, ordenId }) {
@@ -40,64 +44,69 @@ export default function Tracker({ mesa, ordenId }) {
   }, [ordenId])
 
   const pasoActual = PASOS.findIndex(p => p.estado === estado)
-  const msg = MENSAJES[estado]
+  const msg = MENSAJES[estado] || MENSAJES.recibida
 
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans', 'Segoe UI', sans-serif", maxWidth: '420px', margin: '0 auto', background: C.fondo, minHeight: '100vh', padding: '24px 16px' }}>
+    <div style={{ fontFamily: "'Segoe UI', sans-serif", maxWidth: '420px', margin: '0 auto', background: C.bg, minHeight: '100vh', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
 
-      {/* Header */}
-      <div style={{ textAlign: 'center', marginBottom: '32px' }}>
-        <div style={{ fontSize: '40px', marginBottom: '12px' }}>
-          {estado === 'lista' ? '🎉' : estado === 'preparando' ? '👨‍🍳' : '📋'}
-        </div>
-        <div style={{ fontSize: '22px', fontWeight: '700', color: C.textoPrincipal, marginBottom: '6px' }}>
-          {msg.titulo}
-        </div>
-        <div style={{ fontSize: '14px', color: C.textoSecundario }}>{msg.sub}</div>
-      </div>
+      <div style={{ position: 'fixed', top: '15%', left: '50%', transform: 'translateX(-50%)', width: '300px', height: '300px', background: estado === 'lista' ? 'radial-gradient(circle, rgba(45,106,79,0.12) 0%, transparent 70%)' : 'radial-gradient(circle, rgba(201,168,76,0.08) 0%, transparent 70%)', pointerEvents: 'none', transition: 'all 1s' }} />
 
-      {/* Tracker */}
-      <div style={{ background: C.blanco, borderRadius: '20px', padding: '24px', marginBottom: '16px', boxShadow: '0 4px 12px rgba(44,37,35,0.04)' }}>
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          {PASOS.map((paso, i) => (
-            <div key={paso.estado} style={{ display: 'flex', alignItems: 'center', flex: i < PASOS.length - 1 ? 1 : 'none' }}>
-              <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-                <div style={{
-                  width: '32px', height: '32px', borderRadius: '50%',
-                  background: i < pasoActual ? C.verde : i === pasoActual ? C.blanco : C.fondoInactivo,
-                  border: i === pasoActual ? `3px solid ${C.verde}` : 'none',
-                  display: 'flex', alignItems: 'center', justifyContent: 'center',
-                  fontSize: i < pasoActual ? '14px' : '13px',
-                  color: i < pasoActual ? C.blanco : i === pasoActual ? C.verde : C.textoSecundario,
-                  fontWeight: '700',
-                  boxShadow: i === pasoActual ? `0 0 0 4px rgba(30,94,67,0.15)` : 'none',
-                  transition: 'all 0.4s'
-                }}>
-                  {i < pasoActual ? '✓' : i + 1}
-                </div>
-                <span style={{ fontSize: '11px', fontWeight: '600', color: i <= pasoActual ? C.textoPrincipal : C.textoSecundario, textAlign: 'center', whiteSpace: 'nowrap' }}>
-                  {paso.label}
-                </span>
-              </div>
-              {i < PASOS.length - 1 && (
-                <div style={{ flex: 1, height: '4px', background: i < pasoActual ? C.verde : C.fondoInactivo, margin: '0 6px', marginBottom: '22px', borderRadius: '2px', transition: 'background 0.4s' }} />
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
+      <div style={{ width: '100%', maxWidth: '360px' }}>
 
-      {/* Mesa */}
-      <div style={{ background: C.blanco, borderRadius: '16px', padding: '16px', textAlign: 'center', boxShadow: '0 4px 12px rgba(44,37,35,0.04)' }}>
-        <div style={{ fontSize: '12px', color: C.textoSecundario, marginBottom: '4px' }}>Tu mesa</div>
-        <div style={{ fontSize: '24px', fontWeight: '700', color: C.textoPrincipal }}>Mesa {mesa}</div>
-        {estado === 'lista' && (
-          <div style={{ marginTop: '12px', background: '#E8F5EE', borderRadius: '10px', padding: '10px', fontSize: '13px', color: C.verde, fontWeight: '600' }}>
-            🛎️ El mesero viene en camino
+        {/* Icono estado */}
+        <div style={{ textAlign: 'center', marginBottom: '28px' }}>
+          <div style={{ display: 'inline-flex', width: '80px', height: '80px', background: estado === 'lista' ? '#0D2318' : '#1A1400', border: `1px solid ${estado === 'lista' ? '#2D6A4F40' : C.gold + '40'}`, borderRadius: '24px', alignItems: 'center', justifyContent: 'center', fontSize: '36px', marginBottom: '16px' }}>
+            {msg.icon}
           </div>
-        )}
-      </div>
+          <div style={{ fontSize: '22px', fontWeight: '700', color: C.text, marginBottom: '6px' }}>{msg.titulo}</div>
+          <div style={{ fontSize: '13px', color: C.textSub, lineHeight: '1.6' }}>{msg.sub}</div>
+        </div>
 
+        {/* Tracker */}
+        <div style={{ background: C.card, borderRadius: '20px', padding: '20px', marginBottom: '16px', border: `1px solid ${C.border}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+            {PASOS.map((paso, i) => (
+              <div key={paso.estado} style={{ display: 'flex', alignItems: 'center', flex: i < PASOS.length - 1 ? 1 : 'none' }}>
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
+                  <div style={{
+                    width: '36px', height: '36px', borderRadius: '50%',
+                    background: i < pasoActual ? C.success : i === pasoActual ? '#1A1400' : C.bg2,
+                    border: i < pasoActual ? `1px solid #2D6A4F` : i === pasoActual ? `2px solid ${C.gold}` : `1px solid ${C.border}`,
+                    display: 'flex', alignItems: 'center', justifyContent: 'center',
+                    fontSize: i < pasoActual ? '14px' : '16px',
+                    boxShadow: i === pasoActual ? `0 0 16px ${C.gold}30` : 'none',
+                    transition: 'all 0.5s'
+                  }}>
+                    {i < pasoActual ? '✓' : paso.icon}
+                  </div>
+                  <span style={{ fontSize: '10px', fontWeight: '600', color: i <= pasoActual ? C.text : C.textSub, textAlign: 'center', whiteSpace: 'nowrap', letterSpacing: '0.5px' }}>
+                    {paso.label}
+                  </span>
+                </div>
+                {i < PASOS.length - 1 && (
+                  <div style={{ flex: 1, height: '2px', background: i < pasoActual ? C.success : C.border, margin: '0 6px', marginBottom: '22px', borderRadius: '2px', transition: 'background 0.5s' }} />
+                )}
+              </div>
+            ))}
+          </div>
+        </div>
+
+        {/* Mesa */}
+        <div style={{ background: C.card, borderRadius: '16px', padding: '16px', textAlign: 'center', border: `1px solid ${C.border}` }}>
+          <div style={{ fontSize: '11px', color: C.textSub, letterSpacing: '2px', marginBottom: '4px' }}>TU MESA</div>
+          <div style={{ fontSize: '28px', fontWeight: '700', color: C.text }}>Mesa {mesa}</div>
+          {estado === 'lista' && (
+            <div style={{ marginTop: '12px', background: '#0D2318', borderRadius: '10px', padding: '10px', fontSize: '13px', color: C.successLight, fontWeight: '600', border: '1px solid #2D6A4F40' }}>
+              🛎️ El mesero viene en camino
+            </div>
+          )}
+        </div>
+
+        <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '10px', color: '#2A2A2A', letterSpacing: '1px' }}>
+          MORENO TECHNOLOGY
+        </div>
+
+      </div>
     </div>
   )
 }
