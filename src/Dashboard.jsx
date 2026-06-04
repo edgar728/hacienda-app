@@ -5,7 +5,7 @@ import { useParams } from 'react-router-dom'
 import QRCode from 'qrcode.react'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
-// v2
+// v3
 
 const C = {
   bg: '#0A0A0A',
