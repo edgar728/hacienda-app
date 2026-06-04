@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { io } from 'socket.io-client'
 import { useParams } from 'react-router-dom'
+import QRCode from 'qrcode.react'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
 
@@ -27,6 +28,7 @@ export default function Dashboard() {
   const [ordenes, setOrdenes] = useState([])
   const [platillos, setPlatillos] = useState([])
   const [restaurante, setRestaurante] = useState(null)
+  const [mesas, setMesas] = useState([])
   const [cargando, setCargando] = useState(true)
   const [tab, setTab] = useState('resumen')
   const [modalPlatillo, setModalPlatillo] = useState(false)
@@ -63,8 +65,13 @@ export default function Dashboard() {
       .from('platillos').select('*')
       .eq('restaurante_id', rest.id).order('categoria')
 
+    const { data: mesasData } = await supabase
+      .from('mesas').select('*')
+      .eq('restaurante_id', rest.id).order('numero')
+
     setOrdenes(ordenesData || [])
     setPlatillos(platillosData || [])
+    setMesas(mesasData || [])
     setCargando(false)
   }
 
@@ -88,7 +95,6 @@ export default function Dashboard() {
   async function guardarPlatillo() {
     if (!formPlatillo.nombre || !formPlatillo.precio) return
     setGuardando(true)
-
     if (editandoPlatillo) {
       const { data } = await supabase.from('platillos')
         .update({ nombre: formPlatillo.nombre, descripcion: formPlatillo.descripcion, precio: Number(formPlatillo.precio), categoria: formPlatillo.categoria, emoji: formPlatillo.emoji, activo: formPlatillo.activo })
@@ -100,7 +106,6 @@ export default function Dashboard() {
         .select().single()
       setPlatillos(prev => [...prev, data])
     }
-
     setModalPlatillo(false)
     setGuardando(false)
   }
@@ -109,6 +114,68 @@ export default function Dashboard() {
     if (!confirm('¿Eliminar este platillo?')) return
     await supabase.from('platillos').delete().eq('id', id)
     setPlatillos(prev => prev.filter(p => p.id !== id))
+  }
+
+  function imprimirQR(mesa) {
+    const url = `${window.location.origin}/r/${slug}/mesa/${mesa.numero}`
+    const ventana = window.open('', '_blank', 'width=400,height=500')
+    ventana.document.write(`
+      <!DOCTYPE html><html><head><meta charset="UTF-8"><title>QR Mesa ${mesa.numero}</title>
+      <style>
+        body { font-family: 'Segoe UI', sans-serif; display: flex; flex-direction: column; align-items: center; justify-content: center; min-height: 100vh; margin: 0; background: #fff; }
+        .container { text-align: center; padding: 32px; border: 2px solid #C9A84C; border-radius: 16px; max-width: 280px; }
+        h2 { color: #0A0A0A; font-size: 20px; margin: 0 0 4px; }
+        p { color: #6B6B6B; font-size: 13px; margin: 0 0 16px; }
+        img { width: 200px; height: 200px; }
+        .mesa { font-size: 28px; font-weight: 700; color: #C9A84C; margin-top: 16px; }
+        .footer { font-size: 10px; color: #aaa; margin-top: 16px; letter-spacing: 1px; }
+      </style></head><body>
+      <div class="container">
+        <h2>${restaurante?.nombre}</h2>
+        <p>Escanea para ordenar</p>
+        <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}" />
+        <div class="mesa">Mesa ${mesa.numero}</div>
+        <div class="footer">ORDER MORENO · MORENO TECHNOLOGY</div>
+      </div>
+      <script>setTimeout(() => window.print(), 500)</script>
+      </body></html>
+    `)
+    ventana.document.close()
+  }
+
+  function imprimirTodos() {
+    const qrsHtml = mesas.map(mesa => {
+      const url = `${window.location.origin}/r/${slug}/mesa/${mesa.numero}`
+      return `
+        <div class="qr-card">
+          <h2>${restaurante?.nombre}</h2>
+          <p>Escanea para ordenar</p>
+          <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}" />
+          <div class="mesa">Mesa ${mesa.numero}</div>
+          <div class="footer">ORDER MORENO · MORENO TECHNOLOGY</div>
+        </div>
+      `
+    }).join('')
+
+    const ventana = window.open('', '_blank')
+    ventana.document.write(`
+      <!DOCTYPE html><html><head><meta charset="UTF-8"><title>QRs · ${restaurante?.nombre}</title>
+      <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; padding: 16px; background: #fff; }
+        .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+        .qr-card { text-align: center; padding: 20px; border: 2px solid #C9A84C; border-radius: 12px; }
+        h2 { color: #0A0A0A; font-size: 14px; margin: 0 0 2px; }
+        p { color: #6B6B6B; font-size: 11px; margin: 0 0 10px; }
+        img { width: 150px; height: 150px; }
+        .mesa { font-size: 22px; font-weight: 700; color: #C9A84C; margin-top: 8px; }
+        .footer { font-size: 9px; color: #aaa; margin-top: 8px; letter-spacing: 1px; }
+        @media print { body { padding: 0; } }
+      </style></head><body>
+      <div class="grid">${qrsHtml}</div>
+      <script>setTimeout(() => window.print(), 800)</script>
+      </body></html>
+    `)
+    ventana.document.close()
   }
 
   const ventasHoy = ordenes.reduce((acc, o) => acc + Number(o.total), 0)
@@ -133,7 +200,6 @@ export default function Dashboard() {
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", background: C.bg, minHeight: '100vh' }}>
 
-      {/* Header */}
       <div style={{ background: C.bg2, borderBottom: `1px solid ${C.border}`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '36px', height: '36px', background: C.card, borderRadius: '10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>📊</div>
@@ -148,20 +214,18 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Tabs */}
-      <div style={{ background: C.bg2, display: 'flex', borderBottom: `1px solid ${C.border}` }}>
-        {[['resumen', '📊 Resumen'], ['menu', '🍽️ Menú'], ['ordenes', '📋 Órdenes']].map(([id, label]) => (
+      <div style={{ background: C.bg2, display: 'flex', borderBottom: `1px solid ${C.border}`, overflowX: 'auto' }}>
+        {[['resumen', '📊'], ['menu', '🍽️'], ['ordenes', '📋'], ['qrs', '📱']].map(([id, icon]) => (
           <button key={id} onClick={() => setTab(id)}
-            style={{ flex: 1, padding: '13px 4px', fontSize: '12px', fontWeight: '600', color: tab === id ? C.gold : C.textSub, background: 'transparent', border: 'none', borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent', cursor: 'pointer' }}
+            style={{ flex: 1, padding: '13px 8px', fontSize: '11px', fontWeight: '600', color: tab === id ? C.gold : C.textSub, background: 'transparent', border: 'none', borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap', minWidth: '60px' }}
           >
-            {label}
+            {icon} {id.charAt(0).toUpperCase() + id.slice(1)}
           </button>
         ))}
       </div>
 
       <div style={{ padding: '16px' }}>
 
-        {/* Resumen */}
         {tab === 'resumen' && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
@@ -174,7 +238,6 @@ export default function Dashboard() {
                 <div style={{ fontSize: '26px', fontWeight: '700', color: C.text }}>{ordenes.length}</div>
               </div>
             </div>
-
             <div style={{ background: C.card, borderRadius: '16px', padding: '16px', border: `1px solid ${C.border}` }}>
               <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
                 <div style={{ width: '3px', height: '14px', background: C.gold, borderRadius: '2px' }} />
@@ -193,14 +256,12 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* Menú */}
         {tab === 'menu' && (
           <>
             <button onClick={abrirNuevoPlatillo}
-              style={{ width: '100%', background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', marginBottom: '16px', letterSpacing: '0.5px' }}>
+              style={{ width: '100%', background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: 'pointer', marginBottom: '16px' }}>
               + Agregar platillo
             </button>
-
             {categorias.map(cat => (
               <div key={cat} style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '8px' }}>
@@ -209,16 +270,14 @@ export default function Dashboard() {
                 </div>
                 {platillos.filter(p => p.categoria === cat).map(p => (
                   <div key={p.id} style={{ background: C.card, borderRadius: '14px', padding: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px', border: `1px solid ${C.border}` }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#1A1400', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>
-                      {p.emoji}
-                    </div>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#1A1400', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>{p.emoji}</div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', fontWeight: '600', color: p.activo ? C.text : C.textSub, textDecoration: p.activo ? 'none' : 'line-through' }}>{p.nombre}</div>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: C.gold }}>${p.precio}</div>
                     </div>
                     <div style={{ display: 'flex', gap: '5px', flexShrink: 0 }}>
                       <button onClick={() => togglePlatillo(p.id, p.activo)}
-                        style={{ padding: '4px 8px', borderRadius: '20px', border: 'none', cursor: 'pointer', fontSize: '10px', fontWeight: '700', background: p.activo ? '#0D2318' : C.bg2, color: p.activo ? C.successLight : C.textSub, border: `1px solid ${p.activo ? '#2D6A4F40' : C.border}` }}>
+                        style={{ padding: '4px 8px', borderRadius: '20px', cursor: 'pointer', fontSize: '10px', fontWeight: '700', background: p.activo ? '#0D2318' : C.bg2, color: p.activo ? C.successLight : C.textSub, border: `1px solid ${p.activo ? '#2D6A4F40' : C.border}` }}>
                         {p.activo ? 'Activo' : 'Pausado'}
                       </button>
                       <button onClick={() => abrirEditarPlatillo(p)}
@@ -237,7 +296,6 @@ export default function Dashboard() {
           </>
         )}
 
-        {/* Órdenes */}
         {tab === 'ordenes' && (
           <div style={{ background: C.card, borderRadius: '16px', padding: '16px', border: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
@@ -253,8 +311,8 @@ export default function Dashboard() {
                 </div>
                 <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ fontSize: '10px', padding: '3px 8px', borderRadius: '20px', fontWeight: '700',
-                    background: o.estado === 'pagada' ? '#0D2318' : o.estado === 'lista' ? '#0D2318' : o.estado === 'preparando' ? '#1A1400' : '#0A1520',
-                    color: o.estado === 'pagada' ? C.successLight : o.estado === 'lista' ? C.successLight : o.estado === 'preparando' ? C.gold : C.silver,
+                    background: o.estado === 'pagada' || o.estado === 'lista' ? '#0D2318' : o.estado === 'preparando' ? '#1A1400' : '#0A1520',
+                    color: o.estado === 'pagada' || o.estado === 'lista' ? C.successLight : o.estado === 'preparando' ? C.gold : C.silver,
                     border: `1px solid ${o.estado === 'pagada' || o.estado === 'lista' ? '#2D6A4F40' : o.estado === 'preparando' ? C.gold + '40' : C.border}`
                   }}>
                     {o.estado}
@@ -266,13 +324,53 @@ export default function Dashboard() {
           </div>
         )}
 
+        {tab === 'qrs' && (
+          <>
+            <div style={{ background: C.card, borderRadius: '16px', padding: '14px 16px', marginBottom: '16px', border: `1px solid ${C.border}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
+                <div style={{ width: '3px', height: '14px', background: C.gold, borderRadius: '2px' }} />
+                <span style={{ fontSize: '12px', fontWeight: '700', color: C.text, letterSpacing: '1px' }}>CÓDIGOS QR · MESAS</span>
+              </div>
+              <div style={{ fontSize: '12px', color: C.textSub }}>Imprime o muestra cada QR en su mesa correspondiente</div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
+              {mesas.map(mesa => {
+                const url = `${window.location.origin}/r/${slug}/mesa/${mesa.numero}`
+                return (
+                  <div key={mesa.id} style={{ background: C.card, borderRadius: '16px', padding: '14px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
+                    <div style={{ fontSize: '13px', fontWeight: '700', color: C.text, marginBottom: '10px' }}>Mesa {mesa.numero}</div>
+                    <div style={{ background: '#fff', borderRadius: '10px', padding: '8px', display: 'inline-block', marginBottom: '10px' }}>
+                      <QRCode value={url} size={90} level="H" includeMargin={false} />
+                    </div>
+                    <div style={{ fontSize: '9px', color: C.textSub, marginBottom: '10px', wordBreak: 'break-all' }}>
+                      mesa/{mesa.numero}
+                    </div>
+                    <button
+                      onClick={() => imprimirQR(mesa)}
+                      style={{ width: '100%', background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '8px', padding: '8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
+                    >
+                      🖨️ Imprimir
+                    </button>
+                  </div>
+                )
+              })}
+            </div>
+
+            <button
+              onClick={imprimirTodos}
+              style={{ width: '100%', background: C.card, color: C.gold, border: `1px solid ${C.gold}40`, borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
+            >
+              🖨️ Imprimir todos los QRs
+            </button>
+          </>
+        )}
+
       </div>
 
-      {/* Modal platillo */}
       {modalPlatillo && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div style={{ background: C.bg2, borderRadius: '20px 20px 0 0', padding: '24px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.border}`, borderBottom: 'none' }}>
-
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div style={{ fontSize: '16px', fontWeight: '700', color: C.text }}>
                 {editandoPlatillo ? '✏️ Editar platillo' : '+ Nuevo platillo'}
@@ -305,16 +403,15 @@ export default function Dashboard() {
                   placeholder={field.placeholder}
                   value={formPlatillo[field.key]}
                   onChange={e => setFormPlatillo(prev => ({ ...prev, [field.key]: e.target.value }))}
-                  style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${C.border}`, fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: C.bg, color: C.text, marginBottom: '0' }}
+                  style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${C.border}`, fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: C.bg, color: C.text }}
                 />
               </div>
             ))}
 
             <button onClick={guardarPlatillo} disabled={guardando}
-              style={{ width: '100%', background: guardando ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: guardando ? C.textSub : '#0A0A0A', border: 'none', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: guardando ? 'not-allowed' : 'pointer', marginTop: '8px', letterSpacing: '0.5px' }}>
+              style={{ width: '100%', background: guardando ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: guardando ? C.textSub : '#0A0A0A', border: 'none', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: guardando ? 'not-allowed' : 'pointer', marginTop: '8px' }}>
               {guardando ? 'Guardando...' : editandoPlatillo ? 'Guardar cambios' : 'Agregar platillo'}
             </button>
-
           </div>
         </div>
       )}
