@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from './supabase'
 import { io } from 'socket.io-client'
 import { useParams } from 'react-router-dom'
-import QRCode from 'qrcode.react'
+import { QRCodeSVG as QRCode } from 'qrcode.react'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
 // v3
