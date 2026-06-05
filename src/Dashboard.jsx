@@ -5,7 +5,6 @@ import { useParams } from 'react-router-dom'
 import { QRCodeSVG as QRCode } from 'qrcode.react'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
-// v3
 
 const C = {
   bg: '#0A0A0A',
@@ -22,8 +21,6 @@ const C = {
   red: '#E57373',
 }
 
-const EMOJIS = ['🍕','🍔','🌮','🌯','🍜','🍲','🫕','🥗','🥙','🍱','🍣','🥩','🍗','🍖','🥚','🍳','🫔','🥞','🧆','🥘','🍛','🍝','🥣','🍤','🦐','🥑','🫑','🥦','🌽','🥕','🍅','🧅','🧄','🫘','🥐','🥖','🫓','🥨','🧀','🥓','🌭','🥪','🧇','🥜','🍫','🍰','🎂','🧁','🍮','🍭','🍬','🍩','🍪','🍦','🍧','🍨','🥤','🧃','☕','🍵','🧋','🍺','🍷','🍸','🥂','🫗','🍹','🧉']
-
 export default function Dashboard() {
   const { slug } = useParams()
   const [ordenes, setOrdenes] = useState([])
@@ -34,7 +31,8 @@ export default function Dashboard() {
   const [tab, setTab] = useState('resumen')
   const [modalPlatillo, setModalPlatillo] = useState(false)
   const [editandoPlatillo, setEditandoPlatillo] = useState(null)
-  const [formPlatillo, setFormPlatillo] = useState({ nombre: '', descripcion: '', precio: '', categoria: 'Platos fuertes', emoji: '🍽️', activo: true })
+  const [formPlatillo, setFormPlatillo] = useState({ nombre: '', descripcion: '', precio: '', categoria: 'Platos fuertes', imagen: '', activo: true })
+  const [subiendoFoto, setSubiendoFoto] = useState(false)
   const [guardando, setGuardando] = useState(false)
 
   useEffect(() => {
@@ -83,14 +81,32 @@ export default function Dashboard() {
 
   function abrirNuevoPlatillo() {
     setEditandoPlatillo(null)
-    setFormPlatillo({ nombre: '', descripcion: '', precio: '', categoria: 'Platos fuertes', emoji: '🍽️', activo: true })
+    setFormPlatillo({ nombre: '', descripcion: '', precio: '', categoria: 'Platos fuertes', imagen: '', activo: true })
     setModalPlatillo(true)
   }
 
   function abrirEditarPlatillo(p) {
     setEditandoPlatillo(p)
-    setFormPlatillo({ nombre: p.nombre, descripcion: p.descripcion || '', precio: p.precio, categoria: p.categoria, emoji: p.emoji || '🍽️', activo: p.activo })
+    setFormPlatillo({ nombre: p.nombre, descripcion: p.descripcion || '', precio: p.precio, categoria: p.categoria, imagen: p.imagen || '', activo: p.activo })
     setModalPlatillo(true)
+  }
+
+  async function subirFoto(file) {
+    if (!file) return
+    setSubiendoFoto(true)
+    const ext = file.name.split('.').pop()
+    const nombre = `${Date.now()}.${ext}`
+    const { error } = await supabase.storage
+      .from('platillos')
+      .upload(nombre, file, { upsert: true })
+
+    if (!error) {
+      const { data: urlData } = supabase.storage
+        .from('platillos')
+        .getPublicUrl(nombre)
+      setFormPlatillo(prev => ({ ...prev, imagen: urlData.publicUrl }))
+    }
+    setSubiendoFoto(false)
   }
 
   async function guardarPlatillo() {
@@ -98,12 +114,12 @@ export default function Dashboard() {
     setGuardando(true)
     if (editandoPlatillo) {
       const { data } = await supabase.from('platillos')
-        .update({ nombre: formPlatillo.nombre, descripcion: formPlatillo.descripcion, precio: Number(formPlatillo.precio), categoria: formPlatillo.categoria, emoji: formPlatillo.emoji, activo: formPlatillo.activo })
+        .update({ nombre: formPlatillo.nombre, descripcion: formPlatillo.descripcion, precio: Number(formPlatillo.precio), categoria: formPlatillo.categoria, imagen: formPlatillo.imagen, activo: formPlatillo.activo })
         .eq('id', editandoPlatillo.id).select().single()
       setPlatillos(prev => prev.map(p => p.id === editandoPlatillo.id ? data : p))
     } else {
       const { data } = await supabase.from('platillos')
-        .insert({ nombre: formPlatillo.nombre, descripcion: formPlatillo.descripcion, precio: Number(formPlatillo.precio), categoria: formPlatillo.categoria, emoji: formPlatillo.emoji, activo: formPlatillo.activo, restaurante_id: restaurante.id })
+        .insert({ nombre: formPlatillo.nombre, descripcion: formPlatillo.descripcion, precio: Number(formPlatillo.precio), categoria: formPlatillo.categoria, imagen: formPlatillo.imagen, activo: formPlatillo.activo, restaurante_id: restaurante.id })
         .select().single()
       setPlatillos(prev => [...prev, data])
     }
@@ -157,7 +173,6 @@ export default function Dashboard() {
         </div>
       `
     }).join('')
-
     const ventana = window.open('', '_blank')
     ventana.document.write(`
       <!DOCTYPE html><html><head><meta charset="UTF-8"><title>QRs · ${restaurante?.nombre}</title>
@@ -218,8 +233,7 @@ export default function Dashboard() {
       <div style={{ background: C.bg2, display: 'flex', borderBottom: `1px solid ${C.border}`, overflowX: 'auto' }}>
         {[['resumen', '📊'], ['menu', '🍽️'], ['ordenes', '📋'], ['qrs', '📱']].map(([id, icon]) => (
           <button key={id} onClick={() => setTab(id)}
-            style={{ flex: 1, padding: '13px 8px', fontSize: '11px', fontWeight: '600', color: tab === id ? C.gold : C.textSub, background: 'transparent', border: 'none', borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap', minWidth: '60px' }}
-          >
+            style={{ flex: 1, padding: '13px 8px', fontSize: '11px', fontWeight: '600', color: tab === id ? C.gold : C.textSub, background: 'transparent', border: 'none', borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap', minWidth: '60px' }}>
             {icon} {id.charAt(0).toUpperCase() + id.slice(1)}
           </button>
         ))}
@@ -271,7 +285,12 @@ export default function Dashboard() {
                 </div>
                 {platillos.filter(p => p.categoria === cat).map(p => (
                   <div key={p.id} style={{ background: C.card, borderRadius: '14px', padding: '12px', marginBottom: '8px', display: 'flex', alignItems: 'center', gap: '10px', border: `1px solid ${C.border}` }}>
-                    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#1A1400', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px', flexShrink: 0 }}>{p.emoji}</div>
+                    <div style={{ width: '44px', height: '44px', borderRadius: '10px', background: '#1A1400', overflow: 'hidden', flexShrink: 0 }}>
+                      {p.imagen
+                        ? <img src={p.imagen} alt={p.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                        : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '22px' }}>🍽️</div>
+                      }
+                    </div>
                     <div style={{ flex: 1, minWidth: 0 }}>
                       <div style={{ fontSize: '13px', fontWeight: '600', color: p.activo ? C.text : C.textSub, textDecoration: p.activo ? 'none' : 'line-through' }}>{p.nombre}</div>
                       <div style={{ fontSize: '13px', fontWeight: '700', color: C.gold }}>${p.precio}</div>
@@ -334,7 +353,6 @@ export default function Dashboard() {
               </div>
               <div style={{ fontSize: '12px', color: C.textSub }}>Imprime o muestra cada QR en su mesa correspondiente</div>
             </div>
-
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
               {mesas.map(mesa => {
                 const url = `${window.location.origin}/r/${slug}/mesa/${mesa.numero}`
@@ -344,24 +362,17 @@ export default function Dashboard() {
                     <div style={{ background: '#fff', borderRadius: '10px', padding: '8px', display: 'inline-block', marginBottom: '10px' }}>
                       <QRCode value={url} size={90} level="H" includeMargin={false} />
                     </div>
-                    <div style={{ fontSize: '9px', color: C.textSub, marginBottom: '10px', wordBreak: 'break-all' }}>
-                      mesa/{mesa.numero}
-                    </div>
-                    <button
-                      onClick={() => imprimirQR(mesa)}
-                      style={{ width: '100%', background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '8px', padding: '8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}
-                    >
+                    <div style={{ fontSize: '9px', color: C.textSub, marginBottom: '10px' }}>mesa/{mesa.numero}</div>
+                    <button onClick={() => imprimirQR(mesa)}
+                      style={{ width: '100%', background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '8px', padding: '8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
                       🖨️ Imprimir
                     </button>
                   </div>
                 )
               })}
             </div>
-
-            <button
-              onClick={imprimirTodos}
-              style={{ width: '100%', background: C.card, color: C.gold, border: `1px solid ${C.gold}40`, borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}
-            >
+            <button onClick={imprimirTodos}
+              style={{ width: '100%', background: C.card, color: C.gold, border: `1px solid ${C.gold}40`, borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
               🖨️ Imprimir todos los QRs
             </button>
           </>
@@ -379,16 +390,31 @@ export default function Dashboard() {
               <button onClick={() => setModalPlatillo(false)} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: '10px', padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: C.silver }}>✕</button>
             </div>
 
+            {/* Foto */}
             <div style={{ marginBottom: '14px' }}>
-              <label style={{ fontSize: '10px', fontWeight: '700', color: C.textSub, display: 'block', marginBottom: '6px', letterSpacing: '1.5px' }}>EMOJI</label>
-              <div style={{ display: 'flex', flexWrap: 'wrap', gap: '5px', maxHeight: '110px', overflowY: 'auto', background: C.bg, borderRadius: '10px', padding: '8px', border: `1px solid ${C.border}` }}>
-                {EMOJIS.map(e => (
-                  <button key={e} onClick={() => setFormPlatillo(prev => ({ ...prev, emoji: e }))}
-                    style={{ width: '34px', height: '34px', borderRadius: '8px', border: formPlatillo.emoji === e ? `2px solid ${C.gold}` : '2px solid transparent', background: formPlatillo.emoji === e ? '#1A1400' : 'transparent', fontSize: '18px', cursor: 'pointer' }}>
-                    {e}
+              <label style={{ fontSize: '10px', fontWeight: '700', color: C.textSub, display: 'block', marginBottom: '6px', letterSpacing: '1.5px' }}>FOTO DEL PLATILLO</label>
+              {formPlatillo.imagen && (
+                <div style={{ marginBottom: '10px', borderRadius: '12px', overflow: 'hidden', height: '140px', position: 'relative' }}>
+                  <img src={formPlatillo.imagen} alt="platillo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  <button
+                    onClick={() => setFormPlatillo(prev => ({ ...prev, imagen: '' }))}
+                    style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px' }}>
+                    ✕
                   </button>
-                ))}
-              </div>
+                </div>
+              )}
+              <label style={{ display: 'block', background: C.bg, border: `1px dashed ${subiendoFoto ? C.gold : C.border}`, borderRadius: '10px', padding: '20px', textAlign: 'center', cursor: 'pointer' }}>
+                <input type="file" accept="image/*" onChange={e => subirFoto(e.target.files[0])} style={{ display: 'none' }} />
+                {subiendoFoto ? (
+                  <div style={{ fontSize: '13px', color: C.gold }}>Subiendo foto...</div>
+                ) : (
+                  <>
+                    <div style={{ fontSize: '24px', marginBottom: '6px' }}>📷</div>
+                    <div style={{ fontSize: '12px', color: C.textSub }}>Toca para subir foto</div>
+                    <div style={{ fontSize: '11px', color: C.textSub, marginTop: '2px' }}>JPG, PNG — máx 5MB</div>
+                  </>
+                )}
+              </label>
             </div>
 
             {[
