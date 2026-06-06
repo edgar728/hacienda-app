@@ -34,9 +34,37 @@ export default function Login() {
       .eq('password', password)
       .single()
 
+    if (!usuario) {
+      setCargando(false)
+      setError('Email o contraseña incorrectos')
+      return
+    }
+
+    // Verificar suscripción del restaurante
+    const { data: restaurante } = await supabase
+      .from('restaurantes')
+      .select('activo, suscripcion_activa, suscripcion_expira')
+      .eq('slug', usuario.slug)
+      .single()
+
     setCargando(false)
 
-    if (!usuario) { setError('Email o contraseña incorrectos'); return }
+    if (restaurante) {
+      const suscripcionVencida =
+        !restaurante.suscripcion_activa ||
+        !restaurante.suscripcion_expira ||
+        new Date(restaurante.suscripcion_expira) < new Date()
+
+      if (suscripcionVencida) {
+        setError('Tu suscripción ha vencido. Contacta a soporte para renovar.')
+        return
+      }
+
+      if (!restaurante.activo) {
+        setError('Tu cuenta está suspendida. Contacta a soporte.')
+        return
+      }
+    }
 
     sessionStorage.setItem('orderia_user', JSON.stringify(usuario))
 
@@ -59,7 +87,6 @@ export default function Login() {
     }}>
       <div style={{ width: '100%', maxWidth: '380px' }}>
 
-        {/* Logo y marca */}
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
           <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '16px' }}>
             <Logo size={72} />
@@ -72,13 +99,7 @@ export default function Login() {
           </div>
         </div>
 
-        {/* Formulario */}
-        <div style={{
-          background: C.card,
-          borderRadius: '20px',
-          padding: '28px',
-          border: `1px solid ${C.border}`
-        }}>
+        <div style={{ background: C.card, borderRadius: '20px', padding: '28px', border: `1px solid ${C.border}` }}>
           <div style={{ fontSize: '16px', fontWeight: '600', color: C.text, marginBottom: '4px' }}>
             Iniciar sesión
           </div>
@@ -115,7 +136,7 @@ export default function Login() {
           </div>
 
           {error && (
-            <div style={{ background: '#2A1010', border: `1px solid #5A2020`, borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#E57373', marginBottom: '16px' }}>
+            <div style={{ background: '#2A1010', border: '1px solid #5A2020', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: '#E57373', marginBottom: '16px' }}>
               {error}
             </div>
           )}
