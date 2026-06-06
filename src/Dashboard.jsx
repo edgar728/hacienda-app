@@ -237,7 +237,7 @@ export default function Dashboard() {
         {[['resumen', '📊', 'Resumen'], ['menu', '🍽️', 'Menú'], ['ordenes', '📋', 'Órdenes'], ['qrs', '📱', 'QRs'], ['suscripcion', '💳', 'Suscripción']].map(([id, icon, label]) => (
           <button key={id} onClick={() => setTab(id)}
             style={{
-              flex: 'none', padding: '13px 10px',fontSize: '11px', fontWeight: '600',
+              flex: 1, padding: '13px 6px', fontSize: '11px', fontWeight: '600',
               color: tab === id ? C.gold : C.textSub,
               background: 'transparent', border: 'none',
               borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent',
