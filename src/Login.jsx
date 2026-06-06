@@ -40,7 +40,6 @@ export default function Login() {
       return
     }
 
-    // Verificar suscripción del restaurante
     const { data: restaurante } = await supabase
       .from('restaurantes')
       .select('activo, suscripcion_activa, suscripcion_expira')
@@ -76,15 +75,7 @@ export default function Login() {
   }
 
   return (
-    <div style={{
-      fontFamily: "'Segoe UI', sans-serif",
-      background: C.bg,
-      minHeight: '100vh',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      padding: '24px'
-    }}>
+    <div style={{ fontFamily: "'Segoe UI', sans-serif", background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ width: '100%', maxWidth: '380px' }}>
 
         <div style={{ textAlign: 'center', marginBottom: '36px' }}>
@@ -100,20 +91,13 @@ export default function Login() {
         </div>
 
         <div style={{ background: C.card, borderRadius: '20px', padding: '28px', border: `1px solid ${C.border}` }}>
-          <div style={{ fontSize: '16px', fontWeight: '600', color: C.text, marginBottom: '4px' }}>
-            Iniciar sesión
-          </div>
-          <div style={{ fontSize: '13px', color: C.textSub, marginBottom: '24px' }}>
-            Accede a tu panel de trabajo
-          </div>
+          <div style={{ fontSize: '16px', fontWeight: '600', color: C.text, marginBottom: '4px' }}>Iniciar sesión</div>
+          <div style={{ fontSize: '13px', color: C.textSub, marginBottom: '24px' }}>Accede a tu panel de trabajo</div>
 
           <div style={{ marginBottom: '14px' }}>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: C.silver, display: 'block', marginBottom: '6px', letterSpacing: '1px', textTransform: 'uppercase' }}>
-              Email
-            </label>
+            <label style={{ fontSize: '11px', fontWeight: '600', color: C.silver, display: 'block', marginBottom: '6px', letterSpacing: '1px', textTransform: 'uppercase' }}>Email</label>
             <input
-              type="email"
-              value={email}
+              type="email" value={email}
               onChange={e => { setEmail(e.target.value); setError('') }}
               onKeyDown={e => e.key === 'Enter' && login()}
               placeholder="tu@email.com"
@@ -122,12 +106,9 @@ export default function Login() {
           </div>
 
           <div style={{ marginBottom: '20px' }}>
-            <label style={{ fontSize: '11px', fontWeight: '600', color: C.silver, display: 'block', marginBottom: '6px', letterSpacing: '1px', textTransform: 'uppercase' }}>
-              Contraseña
-            </label>
+            <label style={{ fontSize: '11px', fontWeight: '600', color: C.silver, display: 'block', marginBottom: '6px', letterSpacing: '1px', textTransform: 'uppercase' }}>Contraseña</label>
             <input
-              type="password"
-              value={password}
+              type="password" value={password}
               onChange={e => { setPassword(e.target.value); setError('') }}
               onKeyDown={e => e.key === 'Enter' && login()}
               placeholder="••••••••"
@@ -141,11 +122,8 @@ export default function Login() {
             </div>
           )}
 
-          <button
-            onClick={login}
-            disabled={cargando}
-            style={{ width: '100%', background: cargando ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: cargando ? 'not-allowed' : 'pointer', letterSpacing: '0.5px' }}
-          >
+          <button onClick={login} disabled={cargando}
+            style={{ width: '100%', background: cargando ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: cargando ? 'not-allowed' : 'pointer', letterSpacing: '0.5px' }}>
             {cargando ? 'Verificando...' : 'Entrar →'}
           </button>
         </div>
