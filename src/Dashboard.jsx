@@ -3,6 +3,7 @@ import { supabase } from './supabase'
 import { io } from 'socket.io-client'
 import { useParams } from 'react-router-dom'
 import { QRCodeSVG as QRCode } from 'qrcode.react'
+import Suscripcion from './Suscripcion'
 
 const socket = io('https://hacienda-servidor-production.up.railway.app')
 
@@ -50,7 +51,7 @@ export default function Dashboard() {
     hoy.setHours(0, 0, 0, 0)
 
     const { data: rest } = await supabase
-      .from('restaurantes').select('id, nombre').eq('slug', slug).single()
+      .from('restaurantes').select('*').eq('slug', slug).single()
     if (!rest) return
     setRestaurante(rest)
 
@@ -152,7 +153,7 @@ export default function Dashboard() {
         <p>Escanea para ordenar</p>
         <img src="https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(url)}" />
         <div class="mesa">Mesa ${mesa.numero}</div>
-        <div class="footer">ORDER MORENO · MORENO TECHNOLOGY</div>
+        <div class="footer">MORENO ORDER · MORENO TECHNOLOGY</div>
       </div>
       <script>setTimeout(() => window.print(), 500)</script>
       </body></html>
@@ -169,7 +170,7 @@ export default function Dashboard() {
           <p>Escanea para ordenar</p>
           <img src="https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(url)}" />
           <div class="mesa">Mesa ${mesa.numero}</div>
-          <div class="footer">ORDER MORENO · MORENO TECHNOLOGY</div>
+          <div class="footer">MORENO ORDER · MORENO TECHNOLOGY</div>
         </div>
       `
     }).join('')
@@ -216,6 +217,7 @@ export default function Dashboard() {
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", background: C.bg, minHeight: '100vh' }}>
 
+      {/* Header */}
       <div style={{ background: C.bg2, borderBottom: `1px solid ${C.border}`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
           <div style={{ width: '36px', height: '36px', background: C.card, borderRadius: '10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>📊</div>
@@ -230,17 +232,25 @@ export default function Dashboard() {
         </div>
       </div>
 
+      {/* Tabs — ahora incluye Suscripción */}
       <div style={{ background: C.bg2, display: 'flex', borderBottom: `1px solid ${C.border}`, overflowX: 'auto' }}>
-        {[['resumen', '📊'], ['menu', '🍽️'], ['ordenes', '📋'], ['qrs', '📱']].map(([id, icon]) => (
+        {[['resumen', '📊', 'Resumen'], ['menu', '🍽️', 'Menú'], ['ordenes', '📋', 'Órdenes'], ['qrs', '📱', 'QRs'], ['suscripcion', '💳', 'Suscripción']].map(([id, icon, label]) => (
           <button key={id} onClick={() => setTab(id)}
-            style={{ flex: 1, padding: '13px 8px', fontSize: '11px', fontWeight: '600', color: tab === id ? C.gold : C.textSub, background: 'transparent', border: 'none', borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent', cursor: 'pointer', whiteSpace: 'nowrap', minWidth: '60px' }}>
-            {icon} {id.charAt(0).toUpperCase() + id.slice(1)}
+            style={{
+              flex: 'none', padding: '13px 10px',fontSize: '11px', fontWeight: '600',
+              color: tab === id ? C.gold : C.textSub,
+              background: 'transparent', border: 'none',
+              borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent',
+              cursor: 'pointer', whiteSpace: 'nowrap', minWidth: '60px',
+            }}>
+            {icon} {label}
           </button>
         ))}
       </div>
 
       <div style={{ padding: '16px' }}>
 
+        {/* ═══ RESUMEN ═══ */}
         {tab === 'resumen' && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
@@ -271,6 +281,7 @@ export default function Dashboard() {
           </>
         )}
 
+        {/* ═══ MENÚ ═══ */}
         {tab === 'menu' && (
           <>
             <button onClick={abrirNuevoPlatillo}
@@ -316,6 +327,7 @@ export default function Dashboard() {
           </>
         )}
 
+        {/* ═══ ÓRDENES ═══ */}
         {tab === 'ordenes' && (
           <div style={{ background: C.card, borderRadius: '16px', padding: '16px', border: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
@@ -344,6 +356,7 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ═══ QRS ═══ */}
         {tab === 'qrs' && (
           <>
             <div style={{ background: C.card, borderRadius: '16px', padding: '14px 16px', marginBottom: '16px', border: `1px solid ${C.border}` }}>
@@ -365,7 +378,7 @@ export default function Dashboard() {
                     <div style={{ fontSize: '9px', color: C.textSub, marginBottom: '10px' }}>mesa/{mesa.numero}</div>
                     <button onClick={() => imprimirQR(mesa)}
                       style={{ width: '100%', background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '8px', padding: '8px', fontSize: '11px', fontWeight: '700', cursor: 'pointer' }}>
-                      🖨️ Imprimir
+                      Imprimir
                     </button>
                   </div>
                 )
@@ -373,31 +386,35 @@ export default function Dashboard() {
             </div>
             <button onClick={imprimirTodos}
               style={{ width: '100%', background: C.card, color: C.gold, border: `1px solid ${C.gold}40`, borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: 'pointer' }}>
-              🖨️ Imprimir todos los QRs
+              Imprimir todos los QRs
             </button>
           </>
         )}
 
+        {/* ═══ SUSCRIPCIÓN ═══ */}
+        {tab === 'suscripcion' && restaurante && (
+          <Suscripcion restaurante={restaurante} />
+        )}
+
       </div>
 
+      {/* Modal platillo */}
       {modalPlatillo && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div style={{ background: C.bg2, borderRadius: '20px 20px 0 0', padding: '24px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.border}`, borderBottom: 'none' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px' }}>
               <div style={{ fontSize: '16px', fontWeight: '700', color: C.text }}>
-                {editandoPlatillo ? '✏️ Editar platillo' : '+ Nuevo platillo'}
+                {editandoPlatillo ? 'Editar platillo' : 'Nuevo platillo'}
               </div>
               <button onClick={() => setModalPlatillo(false)} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: '10px', padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: C.silver }}>✕</button>
             </div>
 
-            {/* Foto */}
             <div style={{ marginBottom: '14px' }}>
               <label style={{ fontSize: '10px', fontWeight: '700', color: C.textSub, display: 'block', marginBottom: '6px', letterSpacing: '1.5px' }}>FOTO DEL PLATILLO</label>
               {formPlatillo.imagen && (
                 <div style={{ marginBottom: '10px', borderRadius: '12px', overflow: 'hidden', height: '140px', position: 'relative' }}>
                   <img src={formPlatillo.imagen} alt="platillo" style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-                  <button
-                    onClick={() => setFormPlatillo(prev => ({ ...prev, imagen: '' }))}
+                  <button onClick={() => setFormPlatillo(prev => ({ ...prev, imagen: '' }))}
                     style={{ position: 'absolute', top: '8px', right: '8px', background: 'rgba(0,0,0,0.7)', color: '#fff', border: 'none', borderRadius: '50%', width: '28px', height: '28px', cursor: 'pointer', fontSize: '14px' }}>
                     ✕
                   </button>
