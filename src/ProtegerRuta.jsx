@@ -62,7 +62,7 @@ export default function ProtegerRuta({ children, roles }) {
   !rest.suscripcion_expira ||
   new Date(rest.suscripcion_expira) < new Date()
 
-if ((!rest.activo || suscVencida) && !esSuperAdmin) { {
+if ((!rest.activo || suscVencida) && !esSuperAdmin) {
         setBloqueado(true)
         return
       }
