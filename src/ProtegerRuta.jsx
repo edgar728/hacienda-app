@@ -45,10 +45,15 @@ export default function ProtegerRuta({ children, roles }) {
 
       setRestaurante(rest)
 
-      if (!rest.activo && !esSuperAdmin) {
-        setBloqueado(true)
-        return
-      }
+      const suscVencida =
+  !rest.suscripcion_activa ||
+  !rest.suscripcion_expira ||
+  new Date(rest.suscripcion_expira) < new Date()
+
+if ((!rest.activo || suscVencida) && !esSuperAdmin) {
+  setBloqueado(true)
+  return
+}
 
       setVerificado(true)
     }
