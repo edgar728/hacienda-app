@@ -4,13 +4,23 @@ import { supabase } from './supabase'
 
 const C = {
   bg: '#0A0A0A',
-  bg2: '#141414',
   card: '#1C1C1C',
   border: '#2A2A2A',
   gold: '#C9A84C',
   text: '#F5F5F5',
   textSub: '#6B6B6B',
   red: '#E57373',
+}
+
+function cerrarSesionMedianoche(navigate) {
+  const ahora = new Date()
+  const medianoche = new Date()
+  medianoche.setHours(24, 0, 0, 0)
+  const ms = medianoche - ahora
+  return setTimeout(() => {
+    sessionStorage.removeItem('orderia_user')
+    navigate('/login')
+  }, ms)
 }
 
 export default function ProtegerRuta({ children, roles }) {
@@ -21,6 +31,8 @@ export default function ProtegerRuta({ children, roles }) {
   const { slug } = useParams()
 
   useEffect(() => {
+    let timer = null
+
     async function verificar() {
       const raw = sessionStorage.getItem('orderia_user')
       if (!raw) { navigate('/login'); return }
@@ -37,7 +49,7 @@ export default function ProtegerRuta({ children, roles }) {
 
       const { data: rest } = await supabase
         .from('restaurantes')
-        .select('id, nombre, activo')
+        .select('id, nombre, activo, suscripcion_activa, suscripcion_expira')
         .eq('slug', slug)
         .single()
 
@@ -50,53 +62,43 @@ export default function ProtegerRuta({ children, roles }) {
   !rest.suscripcion_expira ||
   new Date(rest.suscripcion_expira) < new Date()
 
-if ((!rest.activo || suscVencida) && !esSuperAdmin) {
-  setBloqueado(true)
-  return
-}
+if ((!rest.activo || suscVencida) && !esSuperAdmin) { {
+        setBloqueado(true)
+        return
+      }
 
+      // Cierre automático a medianoche
+      timer = cerrarSesionMedianoche(navigate)
       setVerificado(true)
     }
 
     verificar()
+    return () => { if (timer) clearTimeout(timer) }
   }, [slug])
 
   if (bloqueado) return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '24px' }}>
       <div style={{ width: '100%', maxWidth: '380px', textAlign: 'center' }}>
-
         <div style={{ position: 'fixed', top: '20%', left: '50%', transform: 'translateX(-50%)', width: '300px', height: '300px', background: 'radial-gradient(circle, rgba(224,57,57,0.07) 0%, transparent 70%)', pointerEvents: 'none' }} />
-
         <div style={{ display: 'inline-flex', width: '72px', height: '72px', background: '#1A0808', border: '1px solid #C0392B40', borderRadius: '20px', alignItems: 'center', justifyContent: 'center', fontSize: '32px', marginBottom: '24px' }}>
           🔒
         </div>
-
-        <div style={{ fontSize: '22px', fontWeight: '700', color: C.text, marginBottom: '8px' }}>
-          Servicio suspendido
-        </div>
+        <div style={{ fontSize: '22px', fontWeight: '700', color: C.text, marginBottom: '8px' }}>Servicio suspendido</div>
         <div style={{ fontSize: '14px', color: C.textSub, marginBottom: '24px', lineHeight: '1.6' }}>
           El acceso a <span style={{ color: C.gold, fontWeight: '600' }}>{restaurante?.nombre}</span> ha sido suspendido temporalmente.
         </div>
-
         <div style={{ background: '#1A0808', border: '1px solid #C0392B40', borderRadius: '16px', padding: '20px', marginBottom: '24px' }}>
-          <div style={{ fontSize: '12px', color: C.red, fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' }}>
-            ¿QUÉ PASÓ?
-          </div>
+          <div style={{ fontSize: '12px', color: C.red, fontWeight: '700', letterSpacing: '1px', marginBottom: '8px' }}>¿QUÉ PASÓ?</div>
           <div style={{ fontSize: '13px', color: '#EF9A9A', lineHeight: '1.6' }}>
             Es posible que haya un pago pendiente o que el servicio haya sido pausado por el administrador. Contacta a Moreno Technology para más información.
           </div>
         </div>
-
         <div style={{ background: C.card, borderRadius: '14px', padding: '16px', border: '1px solid ' + C.border }}>
           <div style={{ fontSize: '11px', color: C.textSub, marginBottom: '6px', letterSpacing: '1px' }}>SOPORTE</div>
           <div style={{ fontSize: '14px', color: C.gold, fontWeight: '600' }}>Moreno Technology</div>
           <div style={{ fontSize: '12px', color: C.textSub, marginTop: '4px' }}>Contacta a tu administrador del sistema</div>
         </div>
-
-        <div style={{ marginTop: '24px', fontSize: '10px', color: '#2A2A2A', letterSpacing: '1px' }}>
-          MORENO TECHNOLOGY © 2026
-        </div>
-
+        <div style={{ marginTop: '24px', fontSize: '10px', color: '#2A2A2A', letterSpacing: '1px' }}>MORENO TECHNOLOGY © 2026</div>
       </div>
     </div>
   )
