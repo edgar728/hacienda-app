@@ -54,11 +54,10 @@ export default function Login() {
         !restaurante.suscripcion_expira ||
         new Date(restaurante.suscripcion_expira) < new Date()
 
-      if (suscripcionVencida) {
-        setError('Tu suscripción ha vencido. Contacta a soporte para renovar.')
-        return
-      }
-
+      if (suscripcionVencida && usuario.rol !== 'dashboard') {
+  setError('Tu suscripción ha vencido. Contacta a soporte para renovar.')
+  return
+}
       if (!restaurante.activo) {
         setError('Tu cuenta está suspendida. Contacta a soporte.')
         return
