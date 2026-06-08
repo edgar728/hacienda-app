@@ -60,8 +60,14 @@ export default function Admin() {
     if (auth === 'true') { setAutenticado(true); cargarDatos() }
   }, [])
 
-  function login() {
-    if (password === ADMIN_PASSWORD) {
+  async function login() {
+    const { data } = await supabase
+      .from('configuracion')
+      .select('valor')
+      .eq('clave', 'admin_password')
+      .single()
+
+    if (data && password === data.valor) {
       sessionStorage.setItem('orderia_admin', 'true')
       setAutenticado(true)
       cargarDatos()

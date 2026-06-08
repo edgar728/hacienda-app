@@ -212,7 +212,7 @@ function MenuMesa() {
     </div>
   )
 
-  if (ordenada) return <Tracker mesa={mesa} ordenId={ordenId} />
+  if (ordenada) return <Tracker mesa={mesa} ordenId={ordenId} onPedirMas={() => { setOrdenada(false); setCarrito({}) }} />
 
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", maxWidth: '420px', margin: '0 auto', background: C.bg, minHeight: '100vh', paddingBottom: totalItems > 0 ? '100px' : '24px' }}>
