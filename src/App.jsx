@@ -249,10 +249,10 @@ function MenuMesa() {
             </div>
             <div style={{ position: 'relative', flexShrink: 0 }}>
               <div style={{ width: '80px', height: '80px', borderRadius: '12px', background: '#1A1400', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '34px', border: `1px solid ${C.border}` }}>
-                {p.emoji
-                ?<img src={p.image} alt={p.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-              : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '34px' }}></div>
-            }
+                {p.imagen
+  ? <img src={p.imagen} alt={p.nombre} style={{ width: '100%', height: '100%', objectFit: 'cover', borderRadius: '12px' }} />
+  : <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '34px' }}>🍽️</div>
+}
                 </div>
               <div style={{ position: 'absolute', bottom: '-8px', right: '-4px' }}>
                 {carrito[p.id] ? (
