@@ -29,7 +29,7 @@ const MENSAJES = {
   lista: { titulo: '¡Tu orden está lista!', sub: 'El mesero va en camino a tu mesa.', icon: '🎉' },
 }
 
-export default function Tracker({ mesa, ordenId }) {
+export default function Tracker({ mesa, ordenId, slug, onPedirMas }) {
   const [estado, setEstado] = useState('recibida')
 
   useEffect(() => {
@@ -92,7 +92,7 @@ export default function Tracker({ mesa, ordenId }) {
         </div>
 
         {/* Mesa */}
-        <div style={{ background: C.card, borderRadius: '16px', padding: '16px', textAlign: 'center', border: `1px solid ${C.border}` }}>
+        <div style={{ background: C.card, borderRadius: '16px', padding: '16px', textAlign: 'center', border: `1px solid ${C.border}`, marginBottom: '12px' }}>
           <div style={{ fontSize: '11px', color: C.textSub, letterSpacing: '2px', marginBottom: '4px' }}>TU MESA</div>
           <div style={{ fontSize: '28px', fontWeight: '700', color: C.text }}>Mesa {mesa}</div>
           {estado === 'lista' && (
@@ -102,7 +102,27 @@ export default function Tracker({ mesa, ordenId }) {
           )}
         </div>
 
-        <div style={{ textAlign: 'center', marginTop: '20px', fontSize: '10px', color: '#2A2A2A', letterSpacing: '1px' }}>
+        {/* Botón agregar más */}
+        <button
+          onClick={onPedirMas}
+          style={{
+            width: '100%',
+            background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`,
+            color: '#0A0A0A',
+            border: 'none',
+            borderRadius: '14px',
+            padding: '16px',
+            fontSize: '15px',
+            fontWeight: '700',
+            cursor: 'pointer',
+            letterSpacing: '0.5px',
+            marginBottom: '12px',
+          }}
+        >
+          + Pedir más cosas
+        </button>
+
+        <div style={{ textAlign: 'center', fontSize: '10px', color: '#2A2A2A', letterSpacing: '1px' }}>
           MORENO TECHNOLOGY
         </div>
 
