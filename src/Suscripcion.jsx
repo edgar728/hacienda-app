@@ -16,7 +16,7 @@ const C = {
   red: '#E57373',
 }
 
-const MP_PUBLIC_KEY = 'APP_USR-2077c9bb-7694-49af-bd4d-8b597ed0b59e'
+const SERVIDOR = 'https://hacienda-servidor-production.up.railway.app'
 const PRECIO = 1200
 
 function diasRestantes(fechaExpira) {
@@ -37,7 +37,6 @@ export default function Suscripcion({ restaurante }) {
 
   useEffect(() => {
     cargarDatos()
-    // Verificar si volvió de MercadoPago con pago exitoso
     const params = new URLSearchParams(window.location.search)
     const paymentId = params.get('payment_id')
     const status = params.get('status')
@@ -57,12 +56,10 @@ export default function Suscripcion({ restaurante }) {
   }
 
   async function confirmarPago(paymentId) {
-    // Verificar que no esté ya registrado
     const { data: existe } = await supabase
       .from('pagos').select('id').eq('mp_payment_id', paymentId).single()
     if (existe) return
 
-    // Calcular nueva fecha de expiración (30 días desde hoy o desde expiración actual si no ha vencido)
     const base = rest?.suscripcion_expira && new Date(rest.suscripcion_expira) > new Date()
       ? new Date(rest.suscripcion_expira)
       : new Date()
@@ -82,7 +79,6 @@ export default function Suscripcion({ restaurante }) {
       activo: true,
     }).eq('id', restaurante.id)
 
-    // Limpiar URL
     window.history.replaceState({}, '', window.location.pathname)
     await cargarDatos()
   }
@@ -90,26 +86,13 @@ export default function Suscripcion({ restaurante }) {
   async function pagar() {
     setCargando(true)
     try {
-      const res = await fetch('https://api.mercadopago.com/checkout/preferences', {
+      // Llamada al servidor — el token de MP nunca sale al frontend
+      const res = await fetch(`${SERVIDOR}/crear-preferencia`, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': 'Bearer APP_USR-7837779424265226-060601-89a3497e86eddf19e928c77f6968d994-3449682727',
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: [{
-            title: 'Moreno Order — Mensualidad',
-            quantity: 1,
-            unit_price: PRECIO,
-            currency_id: 'MXN',
-          }],
-          back_urls: {
-            success: window.location.href,
-            failure: window.location.href,
-            pending: window.location.href,
-          },
-          auto_return: 'approved',
-          metadata: { restaurante_id: restaurante.id },
+          restaurante_id: restaurante.id,
+          back_url: window.location.href,
         }),
       })
       const data = await res.json()
@@ -119,7 +102,7 @@ export default function Suscripcion({ restaurante }) {
         alert('Error al crear el pago. Intenta de nuevo.')
       }
     } catch (e) {
-      alert('Error de conexión con MercadoPago.')
+      alert('Error de conexión. Intenta de nuevo.')
     }
     setCargando(false)
   }
@@ -131,8 +114,6 @@ export default function Suscripcion({ restaurante }) {
 
   return (
     <div>
-
-      {/* Card principal de suscripción */}
       <div style={{
         background: C.card,
         border: '1px solid ' + (activa ? (urgente ? '#C9A84C40' : '#2D6A4F40') : '#C0392B40'),
@@ -158,7 +139,6 @@ export default function Suscripcion({ restaurante }) {
           </div>
         </div>
 
-        {/* Días restantes visual */}
         {activa && (
           <div style={{ marginBottom: '16px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
@@ -174,8 +154,7 @@ export default function Suscripcion({ restaurante }) {
                 background: urgente
                   ? 'linear-gradient(90deg, ' + C.gold + ', ' + C.goldLight + ')'
                   : 'linear-gradient(90deg, #2D6A4F, #4CAF50)',
-                borderRadius: '3px',
-                transition: 'width 0.5s ease',
+                borderRadius: '3px', transition: 'width 0.5s ease',
               }} />
             </div>
             <div style={{ fontSize: '11px', color: C.textSub, marginTop: '6px' }}>
@@ -186,49 +165,34 @@ export default function Suscripcion({ restaurante }) {
 
         {vencida && (
           <div style={{ background: '#1A0808', border: '1px solid #C0392B30', borderRadius: '10px', padding: '12px', marginBottom: '16px' }}>
-            <div style={{ fontSize: '13px', color: C.red, fontWeight: '600', marginBottom: '4px' }}>
-              Tu suscripción ha vencido
-            </div>
-            <div style={{ fontSize: '12px', color: C.textSub }}>
-              Renueva para que tus clientes puedan ordenar de nuevo.
-            </div>
+            <div style={{ fontSize: '13px', color: C.red, fontWeight: '600', marginBottom: '4px' }}>Tu suscripción ha vencido</div>
+            <div style={{ fontSize: '12px', color: C.textSub }}>Renueva para que tus clientes puedan ordenar de nuevo.</div>
           </div>
         )}
 
         {urgente && (
           <div style={{ background: '#1A1400', border: '1px solid #C9A84C30', borderRadius: '10px', padding: '12px', marginBottom: '16px' }}>
-            <div style={{ fontSize: '13px', color: C.gold, fontWeight: '600', marginBottom: '4px' }}>
-              Tu suscripción vence pronto
-            </div>
-            <div style={{ fontSize: '12px', color: C.textSub }}>
-              Renueva ahora para no perder el servicio.
-            </div>
+            <div style={{ fontSize: '13px', color: C.gold, fontWeight: '600', marginBottom: '4px' }}>Tu suscripción vence pronto</div>
+            <div style={{ fontSize: '12px', color: C.textSub }}>Renueva ahora para no perder el servicio.</div>
           </div>
         )}
 
-        <button
-          onClick={pagar}
-          disabled={cargando}
-          style={{
-            width: '100%',
-            background: cargando ? C.border : 'linear-gradient(135deg, ' + C.gold + ', ' + C.goldLight + ')',
-            color: cargando ? C.textSub : '#0A0A0A',
-            border: 'none', borderRadius: '100px',
-            padding: '14px', fontSize: '14px', fontWeight: '700',
-            cursor: cargando ? 'not-allowed' : 'pointer',
-            letterSpacing: '0.5px',
-          }}
-        >
+        <button onClick={pagar} disabled={cargando} style={{
+          width: '100%',
+          background: cargando ? C.border : 'linear-gradient(135deg, ' + C.gold + ', ' + C.goldLight + ')',
+          color: cargando ? C.textSub : '#0A0A0A',
+          border: 'none', borderRadius: '100px',
+          padding: '14px', fontSize: '14px', fontWeight: '700',
+          cursor: cargando ? 'not-allowed' : 'pointer', letterSpacing: '0.5px',
+        }}>
           {cargando ? 'Redirigiendo...' : activa ? 'Renovar suscripción — $1,200' : 'Activar suscripción — $1,200'}
         </button>
 
         <div style={{ textAlign: 'center', marginTop: '10px', fontSize: '11px', color: C.textSub }}>
           Pago seguro con MercadoPago
         </div>
-
       </div>
 
-      {/* Historial de pagos */}
       {pagos.length > 0 && (
         <div style={{ background: C.card, border: '1px solid ' + C.border, borderRadius: '14px', padding: '16px' }}>
           <div style={{ fontSize: '11px', fontWeight: '700', color: C.textSub, letterSpacing: '2px', marginBottom: '14px' }}>
@@ -242,22 +206,12 @@ export default function Suscripcion({ restaurante }) {
                 borderBottom: i < pagos.length - 1 ? '1px solid ' + C.border : 'none',
               }}>
                 <div>
-                  <div style={{ fontSize: '13px', fontWeight: '600', color: C.text }}>
-                    Mensualidad
-                  </div>
-                  <div style={{ fontSize: '11px', color: C.textSub, marginTop: '2px' }}>
-                    {formatFecha(p.created_at)}
-                  </div>
+                  <div style={{ fontSize: '13px', fontWeight: '600', color: C.text }}>Mensualidad</div>
+                  <div style={{ fontSize: '11px', color: C.textSub, marginTop: '2px' }}>{formatFecha(p.created_at)}</div>
                 </div>
                 <div style={{ textAlign: 'right' }}>
-                  <div style={{ fontSize: '14px', fontWeight: '700', color: C.gold }}>
-                    ${Number(p.monto).toLocaleString()}
-                  </div>
-                  <div style={{
-                    fontSize: '10px', fontWeight: '700',
-                    color: p.estado === 'aprobado' ? C.green : C.red,
-                    marginTop: '2px',
-                  }}>
+                  <div style={{ fontSize: '14px', fontWeight: '700', color: C.gold }}>${Number(p.monto).toLocaleString()}</div>
+                  <div style={{ fontSize: '10px', fontWeight: '700', color: p.estado === 'aprobado' ? C.green : C.red, marginTop: '2px' }}>
                     {p.estado === 'aprobado' ? 'Pagado' : p.estado}
                   </div>
                 </div>
@@ -266,7 +220,6 @@ export default function Suscripcion({ restaurante }) {
           })}
         </div>
       )}
-
     </div>
   )
 }
