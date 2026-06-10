@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { supabase } from './supabase'
 import { io } from 'socket.io-client'
 import { useParams } from 'react-router-dom'
@@ -17,17 +17,34 @@ const C = {
   textSub: '#6B6B6B',
   success: '#2D6A4F',
   successBg: '#0D2318',
-  warning: '#B8860B',
-  warningBg: '#1A1400',
-  danger: '#C0392B',
-  dangerBg: '#1A0808',
 }
 
 const ESTADOS = ['recibida', 'preparando', 'lista']
 
+// ── Sonido de nueva orden (3 beeps ascendentes) ────────────────────────────
+function sonarNuevaOrden() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)()
+    const notas = [520, 660, 800]
+    notas.forEach((freq, i) => {
+      const osc = ctx.createOscillator()
+      const gain = ctx.createGain()
+      osc.connect(gain)
+      gain.connect(ctx.destination)
+      osc.frequency.value = freq
+      osc.type = 'sine'
+      const t = ctx.currentTime + i * 0.18
+      gain.gain.setValueAtTime(0, t)
+      gain.gain.linearRampToValueAtTime(0.4, t + 0.05)
+      gain.gain.linearRampToValueAtTime(0, t + 0.15)
+      osc.start(t)
+      osc.stop(t + 0.15)
+    })
+  } catch (e) {}
+}
+
 function Temporizador({ createdAt }) {
   const [segundos, setSegundos] = useState(0)
-
   useEffect(() => {
     const inicio = new Date(createdAt).getTime()
     const actualizar = () => setSegundos(Math.floor((Date.now() - inicio) / 1000))
@@ -35,20 +52,12 @@ function Temporizador({ createdAt }) {
     const interval = setInterval(actualizar, 1000)
     return () => clearInterval(interval)
   }, [createdAt])
-
   const mins = Math.floor(segundos / 60)
   const segs = segundos % 60
   const urgente = mins >= 15
   const warning = mins >= 8
-
   return (
-    <span style={{
-      fontSize: '13px',
-      fontWeight: '700',
-      color: urgente ? '#E57373' : warning ? C.gold : C.silver,
-      fontFamily: 'monospace',
-      letterSpacing: '1px'
-    }}>
+    <span style={{ fontSize: '13px', fontWeight: '700', color: urgente ? '#E57373' : warning ? C.gold : C.silver, fontFamily: 'monospace', letterSpacing: '1px' }}>
       {String(mins).padStart(2, '0')}:{String(segs).padStart(2, '0')}
     </span>
   )
@@ -57,7 +66,6 @@ function Temporizador({ createdAt }) {
 function TarjetaOrden({ orden, onActualizar }) {
   const siguienteEstado = ESTADOS[ESTADOS.indexOf(orden.estado) + 1]
   const esNueva = orden.estado === 'recibida'
-  const esPreparando = orden.estado === 'preparando'
 
   async function cambiarEstado(nuevoEstado) {
     await supabase.from('ordenes').update({ estado: nuevoEstado }).eq('id', orden.id)
@@ -66,29 +74,13 @@ function TarjetaOrden({ orden, onActualizar }) {
   }
 
   return (
-    <div style={{
-      background: C.card,
-      borderRadius: '16px',
-      padding: '16px',
-      marginBottom: '12px',
-      border: `1px solid ${esNueva ? C.gold + '40' : C.border}`,
-      boxShadow: esNueva ? `0 0 20px ${C.gold}15` : 'none',
-      position: 'relative',
-      overflow: 'hidden'
-    }}>
-      {esNueva && (
-        <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})` }} />
-      )}
-
+    <div style={{ background: C.card, borderRadius: '16px', padding: '16px', marginBottom: '12px', border: `1px solid ${esNueva ? C.gold + '40' : C.border}`, boxShadow: esNueva ? `0 0 20px ${C.gold}15` : 'none', position: 'relative', overflow: 'hidden' }}>
+      {esNueva && <div style={{ position: 'absolute', top: 0, left: 0, right: 0, height: '2px', background: `linear-gradient(90deg, ${C.gold}, ${C.goldLight})` }} />}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: '12px' }}>
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '4px' }}>
             <span style={{ fontSize: '18px', fontWeight: '700', color: C.text }}>Mesa {orden.mesa}</span>
-            {esNueva && (
-              <span style={{ background: C.gold, color: '#0A0A0A', fontSize: '9px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px', letterSpacing: '1px' }}>
-                NUEVA
-              </span>
-            )}
+            {esNueva && <span style={{ background: C.gold, color: '#0A0A0A', fontSize: '9px', fontWeight: '700', padding: '2px 8px', borderRadius: '20px', letterSpacing: '1px' }}>NUEVA</span>}
           </div>
           <span style={{ fontSize: '11px', color: C.textSub }}>#{orden.id}</span>
         </div>
@@ -97,41 +89,22 @@ function TarjetaOrden({ orden, onActualizar }) {
           <div style={{ fontSize: '10px', color: C.textSub, marginTop: '2px' }}>tiempo</div>
         </div>
       </div>
-
       <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: '10px', marginBottom: '12px' }}>
         {orden.orden_items?.map((item, i) => (
           <div key={i} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '5px 0', borderBottom: `1px solid ${C.border}20` }}>
-            <span style={{ fontSize: '13px', color: C.text }}>{item.emoji || '🍽️'} {item.nombre}</span>
+            <span style={{ fontSize: '13px', color: C.text }}>🍽️ {item.nombre}</span>
             <span style={{ fontSize: '12px', fontWeight: '600', color: C.gold, background: C.gold + '15', padding: '2px 8px', borderRadius: '20px' }}>x{item.cantidad}</span>
           </div>
         ))}
       </div>
-
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
         <span style={{ fontSize: '13px', fontWeight: '600', color: C.silver }}>${orden.total}</span>
         {siguienteEstado && (
-          <button
-            onClick={() => cambiarEstado(siguienteEstado)}
-            style={{
-              background: siguienteEstado === 'preparando'
-                ? `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`
-                : `linear-gradient(135deg, #2D6A4F, #3D8A6F)`,
-              color: siguienteEstado === 'preparando' ? '#0A0A0A' : '#fff',
-              border: 'none',
-              borderRadius: '10px',
-              padding: '8px 16px',
-              fontSize: '12px',
-              fontWeight: '700',
-              cursor: 'pointer',
-              letterSpacing: '0.5px'
-            }}
-          >
+          <button onClick={() => cambiarEstado(siguienteEstado)} style={{ background: siguienteEstado === 'preparando' ? `linear-gradient(135deg, ${C.gold}, ${C.goldLight})` : 'linear-gradient(135deg, #2D6A4F, #3D8A6F)', color: siguienteEstado === 'preparando' ? '#0A0A0A' : '#fff', border: 'none', borderRadius: '10px', padding: '8px 16px', fontSize: '12px', fontWeight: '700', cursor: 'pointer' }}>
             {siguienteEstado === 'preparando' ? '👨‍🍳 Iniciar' : '✅ Lista'}
           </button>
         )}
-        {!siguienteEstado && (
-          <span style={{ fontSize: '12px', color: C.success, fontWeight: '600' }}>✅ Entregada</span>
-        )}
+        {!siguienteEstado && <span style={{ fontSize: '12px', color: C.success, fontWeight: '600' }}>✅ Entregada</span>}
       </div>
     </div>
   )
@@ -140,6 +113,12 @@ function TarjetaOrden({ orden, onActualizar }) {
 export default function Cocina() {
   const { slug } = useParams()
   const [ordenes, setOrdenes] = useState([])
+  const [sonidoActivo, setSonidoActivo] = useState(true)
+  const sonidoActivoRef = useRef(true)
+
+  useEffect(() => {
+    sonidoActivoRef.current = sonidoActivo
+  }, [sonidoActivo])
 
   useEffect(() => {
     cargarOrdenes()
@@ -148,6 +127,7 @@ export default function Cocina() {
       if (orden.slug !== slug) return
       const itemsSinBebidas = orden.items?.filter(i => i.categoria !== 'Bebidas')
       if (itemsSinBebidas?.length > 0) {
+        if (sonidoActivoRef.current) sonarNuevaOrden()
         setOrdenes(prev => [{ ...orden, orden_items: itemsSinBebidas }, ...prev])
       }
     })
@@ -163,26 +143,15 @@ export default function Cocina() {
   }, [slug])
 
   async function cargarOrdenes() {
-    const { data: rest } = await supabase
-      .from('restaurantes')
-      .select('id')
-      .eq('slug', slug)
-      .single()
-
-    const { data } = await supabase
-      .from('ordenes')
-      .select('*, orden_items(*)')
+    const { data: rest } = await supabase.from('restaurantes').select('id').eq('slug', slug).single()
+    const { data } = await supabase.from('ordenes').select('*, orden_items(*)')
       .eq('restaurante_id', rest.id)
-      .neq('estado', 'lista')
-      .neq('estado', 'entregada')
-      .neq('estado', 'pagada')
+      .neq('estado', 'lista').neq('estado', 'entregada').neq('estado', 'pagada')
       .order('created_at', { ascending: false })
-
     const ordenesFiltered = (data || []).map(o => ({
       ...o,
       orden_items: o.orden_items?.filter(i => i.categoria !== 'Bebidas')
     })).filter(o => o.orden_items?.length > 0)
-
     setOrdenes(ordenesFiltered)
   }
 
@@ -196,22 +165,22 @@ export default function Cocina() {
   return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", background: C.bg, minHeight: '100vh' }}>
 
-      {/* Header */}
       <div style={{ background: C.bg2, borderBottom: `1px solid ${C.border}`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '36px', height: '36px', background: C.card, borderRadius: '10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>
-            🍳
-          </div>
+          <div style={{ width: '36px', height: '36px', background: C.card, borderRadius: '10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '18px' }}>🍳</div>
           <div>
             <div style={{ fontSize: '15px', fontWeight: '700', color: C.text }}>Cocina</div>
             <div style={{ fontSize: '11px', color: C.gold, letterSpacing: '1px' }}>{slug?.toUpperCase()}</div>
           </div>
         </div>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '20px', fontWeight: '700', color: C.text }}>{ordenes.length}</div>
-            <div style={{ fontSize: '10px', color: C.textSub, letterSpacing: '1px' }}>ACTIVAS</div>
-          </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+          {/* Toggle sonido */}
+          <button
+            onClick={() => setSonidoActivo(prev => !prev)}
+            style={{ background: sonidoActivo ? '#0D2318' : C.card, border: `1px solid ${sonidoActivo ? '#2D6A4F40' : C.border}`, borderRadius: '20px', padding: '5px 12px', cursor: 'pointer', fontSize: '12px', color: sonidoActivo ? '#4CAF50' : C.textSub, fontWeight: '600' }}
+          >
+            {sonidoActivo ? '🔔 Sonido' : '🔕 Mudo'}
+          </button>
           <div style={{ display: 'flex', alignItems: 'center', gap: '6px', background: '#0D2318', border: `1px solid ${C.success}40`, borderRadius: '20px', padding: '6px 12px' }}>
             <div style={{ width: '6px', height: '6px', borderRadius: '50%', background: '#4CAF50' }} />
             <span style={{ fontSize: '11px', color: '#4CAF50', fontWeight: '600', letterSpacing: '1px' }}>EN VIVO</span>
@@ -219,7 +188,6 @@ export default function Cocina() {
         </div>
       </div>
 
-      {/* Stats bar */}
       <div style={{ background: C.bg2, borderBottom: `1px solid ${C.border}`, padding: '10px 20px', display: 'flex', gap: '20px' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
           <div style={{ width: '8px', height: '8px', borderRadius: '50%', background: C.gold }} />
@@ -233,10 +201,7 @@ export default function Cocina() {
         </div>
       </div>
 
-      {/* Columnas */}
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '1px', background: C.border, minHeight: 'calc(100vh - 110px)' }}>
-
-        {/* Nuevas */}
         <div style={{ background: C.bg, padding: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
             <div style={{ width: '3px', height: '16px', background: C.gold, borderRadius: '2px' }} />
@@ -251,8 +216,6 @@ export default function Cocina() {
           )}
           {nuevas.map(o => <TarjetaOrden key={o.id} orden={o} onActualizar={actualizarEstado} />)}
         </div>
-
-        {/* Preparando */}
         <div style={{ background: C.bg, padding: '16px' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
             <div style={{ width: '3px', height: '16px', background: '#E8A020', borderRadius: '2px' }} />
@@ -267,7 +230,6 @@ export default function Cocina() {
           )}
           {preparando.map(o => <TarjetaOrden key={o.id} orden={o} onActualizar={actualizarEstado} />)}
         </div>
-
       </div>
     </div>
   )
