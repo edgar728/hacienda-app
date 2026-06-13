@@ -220,16 +220,18 @@ function ModalRegistro({ plan, onClose }) {
       })
       if (errUser) throw errUser
 
+      const backUrl = `${window.location.origin}/?pago=exito&restaurante=${rest.id}&slug=${slug}`
+
       const respMP = await fetch('https://hacienda-servidor-production.up.railway.app/crear-preferencia', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          titulo: plan.nombre,
-          precio: plan.precio,
           restaurante_id: rest.id,
-          slug
+          back_url: backUrl,
+          plan: plan.id
         })
       })
+      
       const dataMP = await respMP.json()
 
       if (dataMP.init_point) {
