@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
+import { supabase } from './supabase'
 
 const C = {
   bg: '#0A0A0A',
@@ -143,6 +144,18 @@ const PASOS = [
   { num: '05', titulo: 'El mesero entrega y cobra', desc: 'Recibe alerta cuando la orden está lista y genera la cuenta con un toque.' },
 ]
 
+function generarSlug(nombre) {
+  return nombre
+    .toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '') + '-' + Math.floor(1000 + Math.random() * 9000)
+}
+
+function generarPassword() {
+  return Math.random().toString(36).slice(-8)
+}
+
 function ModalRegistro({ plan, onClose }) {
   const [form, setForm] = useState({
     nombreRestaurante: '',
@@ -153,6 +166,8 @@ function ModalRegistro({ plan, onClose }) {
     mesas: plan.limiteMesas || 10,
   })
   const [enviando, setEnviando] = useState(false)
+  const [credenciales, setCredenciales] = useState(null)
+  const [error, setError] = useState('')
 
   function actualizar(campo, valor) {
     setForm(prev => ({ ...prev, [campo]: valor }))
@@ -160,13 +175,83 @@ function ModalRegistro({ plan, onClose }) {
 
   async function enviar() {
     if (!form.nombreRestaurante || !form.nombreDueno || !form.email || !form.telefono) {
-      alert('Por favor completa todos los campos obligatorios')
+      setError('Por favor completa todos los campos obligatorios')
       return
     }
+    setError('')
     setEnviando(true)
-    // Aquí en el siguiente paso conectamos con Supabase y Mercado Pago
-    console.log('Datos del registro:', { ...form, plan: plan.id })
+
+    try {
+      const slug = generarSlug(form.nombreRestaurante)
+      const password = generarPassword()
+      const numMesas = plan.limiteMesas || Number(form.mesas) || 10
+
+      const { data: rest, error: errRest } = await supabase
+        .from('restaurantes')
+        .insert({
+          nombre: form.nombreRestaurante,
+          slug,
+          dueno: form.nombreDueno,
+          email: form.email,
+          telefono: form.telefono,
+          rfc: form.rfc,
+          plan: plan.id,
+          activo: true,
+        })
+        .select().single()
+
+      if (errRest) throw errRest
+
+      const mesasArr = Array.from({ length: numMesas }, (_, i) => ({
+        restaurante_id: rest.id,
+        numero: i + 1,
+        status: 'disponible',
+      }))
+      const { error: errMesas } = await supabase.from('mesas').insert(mesasArr)
+      if (errMesas) throw errMesas
+
+      const { error: errUser } = await supabase.from('usuarios').insert({
+        email: form.email,
+        password,
+        nombre: form.nombreDueno,
+        rol: 'dashboard',
+        restaurante_id: rest.id,
+        slug,
+      })
+      if (errUser) throw errUser
+
+      setCredenciales({ email: form.email, password, slug })
+    } catch (e) {
+      console.error(e)
+      setError('Hubo un problema al crear tu restaurante. Intenta de nuevo.')
+    }
     setEnviando(false)
+  }
+
+  if (credenciales) {
+    return (
+      <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+        <div style={{ background: C.bg2, borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '440px', border: `1px solid ${C.border}`, textAlign: 'center' }}>
+          <div style={{ fontSize: '40px', marginBottom: '12px' }}>🎉</div>
+          <div style={{ fontSize: '18px', fontWeight: '700', color: C.text, marginBottom: '6px' }}>¡Tu restaurante está listo!</div>
+          <div style={{ fontSize: '13px', color: C.textSub, marginBottom: '20px' }}>
+            Guarda estos datos — solo se muestran una vez.
+          </div>
+          <div style={{ background: C.card, borderRadius: '12px', padding: '16px', marginBottom: '16px', textAlign: 'left' }}>
+            <div style={{ fontSize: '10px', color: C.textSub, letterSpacing: '1.5px', marginBottom: '4px' }}>USUARIO</div>
+            <div style={{ fontSize: '14px', color: C.text, fontWeight: '600', marginBottom: '12px' }}>{credenciales.email}</div>
+            <div style={{ fontSize: '10px', color: C.textSub, letterSpacing: '1.5px', marginBottom: '4px' }}>CONTRASEÑA PROVISIONAL</div>
+            <div style={{ fontSize: '14px', color: C.gold, fontWeight: '700', fontFamily: 'monospace' }}>{credenciales.password}</div>
+          </div>
+          <div style={{ fontSize: '12px', color: C.textSub, marginBottom: '16px' }}>
+            Te recomendamos cambiar tu contraseña al iniciar sesión.
+          </div>
+          <a href="/login" style={{ display: 'block', textAlign: 'center', background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', borderRadius: '100px', padding: '14px', fontSize: '14px', fontWeight: '700', textDecoration: 'none' }}>
+            Ir al login →
+          </a>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -219,15 +304,21 @@ function ModalRegistro({ plan, onClose }) {
           )}
         </div>
 
-        <div style={{ fontSize: '12px', color: C.textSub, marginBottom: '16px' }}>
+        <div style={{ fontSize: '12px', color: C.textSub, marginBottom: '12px' }}>
           {plan.limiteUsuarios
             ? `Tu plan incluye hasta ${plan.limiteUsuarios} usuarios (cocina, mesero, dashboard).`
             : 'Tu plan incluye usuarios ilimitados.'}
         </div>
 
+        {error && (
+          <div style={{ background: '#1A0808', border: '1px solid #C0392B40', borderRadius: '10px', padding: '10px 14px', fontSize: '12px', color: '#E57373', marginBottom: '12px' }}>
+            {error}
+          </div>
+        )}
+
         <button onClick={enviar} disabled={enviando}
           style={{ width: '100%', background: enviando ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: enviando ? C.textSub : '#0A0A0A', border: 'none', borderRadius: '100px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: enviando ? 'not-allowed' : 'pointer' }}>
-          {enviando ? 'Procesando...' : 'Continuar al pago →'}
+          {enviando ? 'Creando tu restaurante...' : 'Crear mi restaurante →'}
         </button>
       </div>
     </div>
