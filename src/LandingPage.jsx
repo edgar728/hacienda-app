@@ -196,7 +196,7 @@ function ModalRegistro({ plan, onClose }) {
           telefono: form.telefono,
           rfc: form.rfc,
           plan: plan.id,
-          activo: true,
+          activo: false,
         })
         .select().single()
 
@@ -220,7 +220,23 @@ function ModalRegistro({ plan, onClose }) {
       })
       if (errUser) throw errUser
 
-      setCredenciales({ email: form.email, password, slug })
+      const respMP = await fetch('https://hacienda-servidor-production.up.railway.app/crear-preferencia', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          titulo: plan.nombre,
+          precio: plan.precio,
+          restaurante_id: rest.id,
+          slug
+        })
+      })
+      const dataMP = await respMP.json()
+
+      if (dataMP.init_point) {
+        window.location.href = dataMP.init_point
+      } else {
+        throw new Error('No se pudo iniciar el pago')
+      }
     } catch (e) {
       console.error(e)
       setError('Hubo un problema al crear tu restaurante. Intenta de nuevo.')
