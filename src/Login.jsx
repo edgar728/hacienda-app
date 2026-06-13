@@ -82,7 +82,7 @@ export default function Login() {
             <Logo size={72} />
           </div>
           <div style={{ fontSize: '24px', fontWeight: '700', color: C.text, letterSpacing: '0.5px' }}>
-            Order Moreno
+            Moreno Order
           </div>
           <div style={{ fontSize: '11px', color: C.gold, marginTop: '6px', letterSpacing: '3px', textTransform: 'uppercase' }}>
             Moreno Technology

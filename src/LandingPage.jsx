@@ -130,9 +130,9 @@ function MockupMenu() {
 }
 
 const PLANES = [
-  { nombre: 'Básico', precio: 1299, color: '#8A8A8A', mesas: '10 mesas', usuarios: '3 usuarios', beneficios: ['Menú digital con fotos', 'Sistema de cocina', 'Dashboard de ventas', 'Códigos QR', 'Soporte por email'] },
-  { nombre: 'Pro', precio: 1799, color: '#C9A84C', mesas: '25 mesas', usuarios: '6 usuarios', popular: true, beneficios: ['Todo lo del Básico', 'Reportes avanzados', 'Dashboard completo', 'Soporte prioritario', 'Historial de pagos'] },
-  { nombre: 'Premium', precio: 2499, color: '#64B5F6', mesas: 'Ilimitadas', usuarios: 'Ilimitados', beneficios: ['Todo lo del Pro', 'Mesas ilimitadas', 'Usuarios ilimitados', 'Reportes personalizados', 'Soporte dedicado 24/7'] },
+  { id: 'basico', nombre: 'Básico', precio: 1299, color: '#8A8A8A', mesas: '10 mesas', usuarios: '3 usuarios', limiteMesas: 10, limiteUsuarios: 3, beneficios: ['Menú digital con fotos', 'Sistema de cocina', 'Dashboard de ventas', 'Códigos QR', 'Soporte por email'] },
+  { id: 'pro', nombre: 'Pro', precio: 1799, color: '#C9A84C', mesas: '25 mesas', usuarios: '6 usuarios', limiteMesas: 25, limiteUsuarios: 6, popular: true, beneficios: ['Todo lo del Básico', 'Reportes avanzados', 'Dashboard completo', 'Soporte prioritario', 'Historial de pagos'] },
+  { id: 'premium', nombre: 'Premium', precio: 2499, color: '#64B5F6', mesas: 'Ilimitadas', usuarios: 'Ilimitados', limiteMesas: null, limiteUsuarios: null, beneficios: ['Todo lo del Pro', 'Mesas ilimitadas', 'Usuarios ilimitados', 'Reportes personalizados', 'Soporte dedicado 24/7'] },
 ]
 
 const PASOS = [
@@ -143,9 +143,101 @@ const PASOS = [
   { num: '05', titulo: 'El mesero entrega y cobra', desc: 'Recibe alerta cuando la orden está lista y genera la cuenta con un toque.' },
 ]
 
+function ModalRegistro({ plan, onClose }) {
+  const [form, setForm] = useState({
+    nombreRestaurante: '',
+    nombreDueno: '',
+    email: '',
+    telefono: '',
+    rfc: '',
+    mesas: plan.limiteMesas || 10,
+  })
+  const [enviando, setEnviando] = useState(false)
+
+  function actualizar(campo, valor) {
+    setForm(prev => ({ ...prev, [campo]: valor }))
+  }
+
+  async function enviar() {
+    if (!form.nombreRestaurante || !form.nombreDueno || !form.email || !form.telefono) {
+      alert('Por favor completa todos los campos obligatorios')
+      return
+    }
+    setEnviando(true)
+    // Aquí en el siguiente paso conectamos con Supabase y Mercado Pago
+    console.log('Datos del registro:', { ...form, plan: plan.id })
+    setEnviando(false)
+  }
+
+  return (
+    <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.85)', zIndex: 300, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '16px' }}>
+      <div style={{ background: C.bg2, borderRadius: '20px', padding: '28px', width: '100%', maxWidth: '440px', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.border}` }}>
+
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '8px' }}>
+          <div style={{ fontSize: '18px', fontWeight: '700', color: C.text }}>Registro · Plan {plan.nombre}</div>
+          <button onClick={onClose} style={{ background: C.card, border: `1px solid ${C.border}`, borderRadius: '10px', padding: '8px 12px', cursor: 'pointer', fontSize: '14px', color: C.textSub }}>✕</button>
+        </div>
+        <div style={{ fontSize: '13px', color: C.textSub, marginBottom: '20px' }}>
+          ${plan.precio.toLocaleString()}/mes — completa los datos de tu restaurante
+        </div>
+
+        {[
+          { label: 'NOMBRE DEL RESTAURANTE', key: 'nombreRestaurante', placeholder: 'Ej: La Hacienda' },
+          { label: 'NOMBRE DEL DUEÑO', key: 'nombreDueno', placeholder: 'Ej: Juan Pérez' },
+          { label: 'EMAIL', key: 'email', placeholder: 'correo@ejemplo.com', type: 'email' },
+          { label: 'TELÉFONO', key: 'telefono', placeholder: '33 1234 5678', type: 'tel' },
+          { label: 'RFC (OPCIONAL)', key: 'rfc', placeholder: 'XAXX010101000' },
+        ].map(f => (
+          <div key={f.key} style={{ marginBottom: '12px' }}>
+            <label style={{ fontSize: '10px', fontWeight: '700', color: C.textSub, display: 'block', marginBottom: '6px', letterSpacing: '1.5px' }}>{f.label}</label>
+            <input
+              type={f.type || 'text'}
+              placeholder={f.placeholder}
+              value={form[f.key]}
+              onChange={e => actualizar(f.key, e.target.value)}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${C.border}`, fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: C.bg, color: C.text }}
+            />
+          </div>
+        ))}
+
+        <div style={{ marginBottom: '12px' }}>
+          <label style={{ fontSize: '10px', fontWeight: '700', color: C.textSub, display: 'block', marginBottom: '6px', letterSpacing: '1.5px' }}>NÚMERO DE MESAS</label>
+          {plan.limiteMesas ? (
+            <div style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${C.border}`, fontSize: '14px', background: C.card, color: C.textSub, boxSizing: 'border-box', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <span>{plan.limiteMesas} mesas</span>
+              <span style={{ fontSize: '10px', background: '#1A1400', color: C.gold, padding: '3px 8px', borderRadius: '20px', border: `1px solid ${C.gold}40` }}>Incluido en plan {plan.nombre}</span>
+            </div>
+          ) : (
+            <input
+              type="number"
+              min="1"
+              placeholder="Ej: 30"
+              value={form.mesas}
+              onChange={e => actualizar('mesas', Number(e.target.value))}
+              style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${C.border}`, fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: C.bg, color: C.text }}
+            />
+          )}
+        </div>
+
+        <div style={{ fontSize: '12px', color: C.textSub, marginBottom: '16px' }}>
+          {plan.limiteUsuarios
+            ? `Tu plan incluye hasta ${plan.limiteUsuarios} usuarios (cocina, mesero, dashboard).`
+            : 'Tu plan incluye usuarios ilimitados.'}
+        </div>
+
+        <button onClick={enviar} disabled={enviando}
+          style={{ width: '100%', background: enviando ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: enviando ? C.textSub : '#0A0A0A', border: 'none', borderRadius: '100px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: enviando ? 'not-allowed' : 'pointer' }}>
+          {enviando ? 'Procesando...' : 'Continuar al pago →'}
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function LandingPage() {
   const [menuAbierto, setMenuAbierto] = useState(false)
   const [scrolled, setScrolled] = useState(false)
+  const [planSeleccionado, setPlanSeleccionado] = useState(null)
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 40)
@@ -345,16 +437,16 @@ export default function LandingPage() {
                       </div>
                     ))}
                   </div>
-                  <a href={WHATSAPP} target="_blank" rel="noreferrer" style={{
-                    display: 'block', textAlign: 'center', textDecoration: 'none',
-                    background: plan.popular ? 'linear-gradient(135deg, #C9A84C, #E8C97A)' : 'transparent',
-                    color: plan.popular ? '#0A0A0A' : plan.color,
-                    border: plan.popular ? 'none' : `1px solid ${plan.color}40`,
-                    borderRadius: '100px', padding: '12px',
-                    fontSize: '13px', fontWeight: '700',
-                  }}>
-                    Empezar con {plan.nombre}
-                  </a>
+                  <button onClick={() => setPlanSeleccionado(plan)} style={{
+  display: 'block', width: '100%', textAlign: 'center', textDecoration: 'none', cursor: 'pointer',
+  background: plan.popular ? 'linear-gradient(135deg, #C9A84C, #E8C97A)' : 'transparent',
+  color: plan.popular ? '#0A0A0A' : plan.color,
+  border: plan.popular ? 'none' : `1px solid ${plan.color}40`,
+  borderRadius: '100px', padding: '12px',
+  fontSize: '13px', fontWeight: '700',
+}}>
+  Empezar con {plan.nombre}
+</button>
                 </div>
               </FadeIn>
             ))}
@@ -396,6 +488,10 @@ export default function LandingPage() {
           morenocorp@gmail.com
         </a>
       </footer>
+
+    {planSeleccionado && (
+        <ModalRegistro plan={planSeleccionado} onClose={() => setPlanSeleccionado(null)} />
+      )}
 
     </div>
   )

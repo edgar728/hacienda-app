@@ -56,6 +56,14 @@ export default function Dashboard() {
   const [subiendoFoto, setSubiendoFoto] = useState(false)
   const [guardando, setGuardando] = useState(false)
 
+  // Cambio de contraseña
+  const [passActual, setPassActual] = useState('')
+  const [passNueva, setPassNueva] = useState('')
+  const [passConfirm, setPassConfirm] = useState('')
+  const [passError, setPassError] = useState('')
+  const [passExito, setPassExito] = useState(false)
+  const [guardandoPass, setGuardandoPass] = useState(false)
+
   useEffect(() => {
     const timer = cerrarSesionMedianoche()
     cargarDatos()
@@ -96,6 +104,40 @@ export default function Dashboard() {
     setPlatillos(platillosData || [])
     setMesas(mesasData || [])
     setCargando(false)
+  }
+
+  async function cambiarPassword() {
+    setPassError('')
+    setPassExito(false)
+    if (!passActual || !passNueva || !passConfirm) { setPassError('Completa todos los campos'); return }
+    if (passNueva !== passConfirm) { setPassError('Las contraseñas nuevas no coinciden'); return }
+    if (passNueva.length < 6) { setPassError('La contraseña debe tener al menos 6 caracteres'); return }
+
+    setGuardandoPass(true)
+    const usuario = JSON.parse(sessionStorage.getItem('orderia_user'))
+
+    // Verificar contraseña actual
+    const { data: user } = await supabase.from('usuarios')
+      .select('id').eq('id', usuario.id).eq('password', passActual).single()
+
+    if (!user) {
+      setPassError('La contraseña actual es incorrecta')
+      setGuardandoPass(false)
+      return
+    }
+
+    // Actualizar contraseña
+    await supabase.from('usuarios').update({ password: passNueva }).eq('id', usuario.id)
+
+    // Actualizar sesión
+    const updatedUser = { ...usuario, password: passNueva }
+    sessionStorage.setItem('orderia_user', JSON.stringify(updatedUser))
+
+    setPassActual('')
+    setPassNueva('')
+    setPassConfirm('')
+    setPassExito(true)
+    setGuardandoPass(false)
   }
 
   async function togglePlatillo(id, activo) {
@@ -184,11 +226,12 @@ export default function Dashboard() {
   const topPlatillos = Object.entries(popularidad).sort((a, b) => b[1] - a[1]).slice(0, 5)
   const categorias = [...new Set(platillos.map(p => p.categoria))]
   const vencida = suscripcionVencida(restaurante)
+  const usuario = JSON.parse(sessionStorage.getItem('orderia_user') || '{}')
 
   if (cargando) return (
     <div style={{ fontFamily: "'Segoe UI', sans-serif", background: C.bg, minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
       <div style={{ textAlign: 'center' }}>
-        <div style={{ fontSize: '32px', marginBottom: '12px' }}>📊</div>
+        <div style={{ fontSize: '32px', marginBottom: '12px' }}>⚙️</div>
         <div style={{ fontSize: '14px', color: C.textSub }}>Cargando...</div>
       </div>
     </div>
@@ -200,11 +243,11 @@ export default function Dashboard() {
       {/* Header */}
       <div style={{ background: C.bg2, borderBottom: `1px solid ${C.border}`, padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 50 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{ width: '36px', height: '36px', background: C.card, borderRadius: '10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>📊</div>
+          <div style={{ width: '36px', height: '36px', background: C.card, borderRadius: '10px', border: `1px solid ${C.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '16px' }}>⚙️</div>
           <div>
             <div style={{ fontSize: '15px', fontWeight: '700', color: C.text }}>{restaurante?.nombre}</div>
             <div style={{ fontSize: '11px', color: vencida ? C.red : C.gold, letterSpacing: '1px' }}>
-              {vencida ? 'SUSCRIPCIÓN VENCIDA' : 'DASHBOARD'}
+              {vencida ? 'SUSCRIPCIÓN VENCIDA' : 'ADMINISTRADOR'}
             </div>
           </div>
         </div>
@@ -224,9 +267,7 @@ export default function Dashboard() {
       {/* Banner vencida */}
       {vencida && (
         <div style={{ background: '#1A0808', borderBottom: '1px solid #C0392B40', padding: '12px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-          <div style={{ fontSize: '13px', color: '#EF9A9A' }}>
-            Tu suscripción ha vencido. Renueva para continuar.
-          </div>
+          <div style={{ fontSize: '13px', color: '#EF9A9A' }}>Tu suscripción ha vencido. Renueva para continuar.</div>
           <button onClick={() => setTab('suscripcion')}
             style={{ background: `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: '#0A0A0A', border: 'none', borderRadius: '20px', padding: '6px 14px', fontSize: '11px', fontWeight: '700', cursor: 'pointer', whiteSpace: 'nowrap', marginLeft: '12px' }}>
             Renovar
@@ -236,18 +277,18 @@ export default function Dashboard() {
 
       {/* Tabs */}
       <div style={{ background: C.bg2, display: 'flex', borderBottom: `1px solid ${C.border}`, overflowX: 'auto' }}>
-        {[['resumen', '📊', 'Resumen'], ['menu', '🍽️', 'Menú'], ['ordenes', '📋', 'Órdenes'], ['qrs', '📱', 'QRs'], ['suscripcion', '💳', 'Suscripción']].map(([id, icon, label]) => {
-          const bloqueado = vencida && id !== 'suscripcion'
+        {[['resumen', '📊', 'Resumen'], ['menu', '🍽️', 'Menú'], ['ordenes', '📋', 'Órdenes'], ['qrs', '📱', 'QRs'], ['suscripcion', '💳', 'Suscripción'], ['cuenta', '👤', 'Cuenta']].map(([id, icon, label]) => {
+          const bloqueado = vencida && id !== 'suscripcion' && id !== 'cuenta'
           return (
             <button key={id}
               onClick={() => { if (!bloqueado) setTab(id) }}
               style={{
-                flex: 1, padding: '13px 6px', fontSize: '11px', fontWeight: '600',
+                flex: 1, padding: '13px 4px', fontSize: '10px', fontWeight: '600',
                 color: bloqueado ? '#3A3A3A' : tab === id ? C.gold : C.textSub,
                 background: 'transparent', border: 'none',
                 borderBottom: tab === id ? `2px solid ${C.gold}` : '2px solid transparent',
                 cursor: bloqueado ? 'not-allowed' : 'pointer',
-                whiteSpace: 'nowrap', minWidth: '60px',
+                whiteSpace: 'nowrap', minWidth: '50px',
               }}>
               {icon} {label}
             </button>
@@ -257,6 +298,7 @@ export default function Dashboard() {
 
       <div style={{ padding: '16px' }}>
 
+        {/* ═══ RESUMEN ═══ */}
         {tab === 'resumen' && !vencida && (
           <>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '16px' }}>
@@ -287,6 +329,7 @@ export default function Dashboard() {
           </>
         )}
 
+        {/* ═══ MENÚ ═══ */}
         {tab === 'menu' && !vencida && (
           <>
             <button onClick={abrirNuevoPlatillo}
@@ -330,6 +373,7 @@ export default function Dashboard() {
           </>
         )}
 
+        {/* ═══ ÓRDENES ═══ */}
         {tab === 'ordenes' && !vencida && (
           <div style={{ background: C.card, borderRadius: '16px', padding: '16px', border: `1px solid ${C.border}` }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '14px' }}>
@@ -356,6 +400,7 @@ export default function Dashboard() {
           </div>
         )}
 
+        {/* ═══ QRS ═══ */}
         {tab === 'qrs' && !vencida && (
           <>
             <div style={{ background: C.card, borderRadius: '16px', padding: '14px 16px', marginBottom: '16px', border: `1px solid ${C.border}` }}>
@@ -390,12 +435,84 @@ export default function Dashboard() {
           </>
         )}
 
+        {/* ═══ SUSCRIPCIÓN ═══ */}
         {tab === 'suscripcion' && restaurante && (
           <Suscripcion restaurante={restaurante} />
         )}
 
+        {/* ═══ CUENTA ═══ */}
+        {tab === 'cuenta' && (
+          <div>
+            {/* Info del usuario */}
+            <div style={{ background: C.card, borderRadius: '16px', padding: '16px', border: `1px solid ${C.border}`, marginBottom: '16px' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                <div style={{ width: '48px', height: '48px', borderRadius: '50%', background: '#1A1400', border: `1px solid ${C.gold}40`, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '20px' }}>
+                  👤
+                </div>
+                <div>
+                  <div style={{ fontSize: '15px', fontWeight: '700', color: C.text }}>{usuario.nombre}</div>
+                  <div style={{ fontSize: '12px', color: C.textSub, marginTop: '2px' }}>{usuario.email}</div>
+                  <div style={{ display: 'inline-block', marginTop: '4px', background: '#1A1400', border: `1px solid ${C.gold}40`, borderRadius: '20px', padding: '2px 10px', fontSize: '10px', color: C.gold, fontWeight: '700' }}>
+                    Administrador
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Cambiar contraseña */}
+            <div style={{ background: C.card, borderRadius: '16px', padding: '16px', border: `1px solid ${C.border}` }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+                <div style={{ width: '3px', height: '14px', background: C.gold, borderRadius: '2px' }} />
+                <span style={{ fontSize: '12px', fontWeight: '700', color: C.text, letterSpacing: '1px' }}>CAMBIAR CONTRASEÑA</span>
+              </div>
+
+              {[
+                { label: 'CONTRASEÑA ACTUAL', value: passActual, setter: setPassActual },
+                { label: 'NUEVA CONTRASEÑA', value: passNueva, setter: setPassNueva },
+                { label: 'CONFIRMAR NUEVA CONTRASEÑA', value: passConfirm, setter: setPassConfirm },
+              ].map(field => (
+                <div key={field.label} style={{ marginBottom: '12px' }}>
+                  <label style={{ fontSize: '10px', fontWeight: '700', color: C.textSub, display: 'block', marginBottom: '6px', letterSpacing: '1.5px' }}>{field.label}</label>
+                  <input
+                    type="password"
+                    value={field.value}
+                    onChange={e => { field.setter(e.target.value); setPassError(''); setPassExito(false) }}
+                    placeholder="••••••••"
+                    style={{ width: '100%', padding: '12px 14px', borderRadius: '10px', border: `1px solid ${C.border}`, fontSize: '14px', outline: 'none', boxSizing: 'border-box', background: C.bg, color: C.text }}
+                  />
+                </div>
+              ))}
+
+              {passError && (
+                <div style={{ background: '#1A0808', border: '1px solid #C0392B40', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: C.red, marginBottom: '12px' }}>
+                  {passError}
+                </div>
+              )}
+
+              {passExito && (
+                <div style={{ background: '#0D2318', border: '1px solid #2D6A4F40', borderRadius: '10px', padding: '10px 14px', fontSize: '13px', color: C.successLight, marginBottom: '12px' }}>
+                  Contraseña actualizada correctamente
+                </div>
+              )}
+
+              <button onClick={cambiarPassword} disabled={guardandoPass}
+                style={{ width: '100%', background: guardandoPass ? C.border : `linear-gradient(135deg, ${C.gold}, ${C.goldLight})`, color: guardandoPass ? C.textSub : '#0A0A0A', border: 'none', borderRadius: '12px', padding: '14px', fontSize: '14px', fontWeight: '700', cursor: guardandoPass ? 'not-allowed' : 'pointer' }}>
+                {guardandoPass ? 'Guardando...' : 'Cambiar contraseña'}
+              </button>
+
+              {/* Cerrar sesión */}
+              <button
+                onClick={() => { sessionStorage.removeItem('orderia_user'); window.location.href = '/login' }}
+                style={{ width: '100%', background: 'transparent', color: C.red, border: '1px solid #C0392B40', borderRadius: '12px', padding: '12px', fontSize: '13px', fontWeight: '700', cursor: 'pointer', marginTop: '10px' }}>
+                Cerrar sesión
+              </button>
+            </div>
+          </div>
+        )}
+
       </div>
 
+      {/* Modal platillo */}
       {modalPlatillo && (
         <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.9)', zIndex: 200, display: 'flex', alignItems: 'flex-end', justifyContent: 'center' }}>
           <div style={{ background: C.bg2, borderRadius: '20px 20px 0 0', padding: '24px', width: '100%', maxWidth: '480px', maxHeight: '90vh', overflowY: 'auto', border: `1px solid ${C.border}`, borderBottom: 'none' }}>
