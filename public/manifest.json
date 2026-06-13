@@ -2,7 +2,7 @@
   "name": "Moreno Order",
   "short_name": "Moreno Order",
   "description": "Sistema de órdenes para restaurantes",
-  "start_url": "/",
+  "start_url": "/login",
   "display": "standalone",
   "background_color": "#0A0A0A",
   "theme_color": "#C9A84C",
