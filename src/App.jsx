@@ -11,6 +11,7 @@ import Login from './Login'
 import ProtegerRuta from './ProtegerRuta'
 import Tracker from './Tracker'
 import Chatbot from './Chatbot'
+import LandingPage from './LandingPage'
 
 const SERVER = 'https://hacienda-servidor-production.up.railway.app'
 const socket = io(SERVER)
@@ -308,7 +309,7 @@ function App() {
   return (
     <BrowserRouter>
       <Routes>
-        <Route path="/" element={<Inicio />} />
+        <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<Login />} />
         <Route path="/r/:slug/mesa/:mesa" element={<MenuMesa />} />
         <Route path="/r/:slug/cocina" element={
