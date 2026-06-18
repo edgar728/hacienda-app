@@ -34,6 +34,7 @@ const C = {
 }
 
 function MenuMesa() {
+  socket.emit('unirse', restaurante.id)
   const { slug, mesa } = useParams()
   const [restaurante, setRestaurante] = useState(null)
   const [platillos, setPlatillos] = useState([])
@@ -53,6 +54,7 @@ function MenuMesa() {
         .from('restaurantes').select('*').eq('slug', slug).single()
       if (!rest) { setCargando(false); return }
       setRestaurante(rest)
+      socket.emit('unirse', rest.id)
 
       const { data: mesaData } = await supabase
         .from('mesas').select('*')

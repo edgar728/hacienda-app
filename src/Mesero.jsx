@@ -71,6 +71,8 @@ export default function Mesero() {
   useEffect(() => {
     cargarTodo()
 
+    socket.emit('unirse', rest.id)
+
     socket.on('mesa_actualizada', (mesa) => {
       setMesas(prev => prev.map(m => m.id === mesa.id ? mesa : m))
     })
@@ -97,6 +99,7 @@ export default function Mesero() {
     const { data: rest } = await supabase.from('restaurantes').select('id').eq('slug', slug).single()
     setRestauranteId(rest.id)
     restauranteIdRef.current = rest.id
+    socket.emit('unirse', rest.id)
     const { data: mesasData } = await supabase.from('mesas').select('*').eq('restaurante_id', rest.id).order('numero')
     setMesas(mesasData || [])
     await cargarOrdenesListas(rest.id)

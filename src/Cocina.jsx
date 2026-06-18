@@ -123,6 +123,8 @@ export default function Cocina() {
   useEffect(() => {
     cargarOrdenes()
 
+    socket.emit('unirse', rest.id)
+
     socket.on('orden_recibida', (orden) => {
       if (orden.slug !== slug) return
       const itemsSinBebidas = orden.items?.filter(i => i.categoria !== 'Bebidas')
@@ -144,6 +146,7 @@ export default function Cocina() {
 
   async function cargarOrdenes() {
     const { data: rest } = await supabase.from('restaurantes').select('id').eq('slug', slug).single()
+    socket.emit('unirse', rest.id)
     const { data } = await supabase.from('ordenes').select('*, orden_items(*)')
       .eq('restaurante_id', rest.id)
       .neq('estado', 'lista').neq('estado', 'entregada').neq('estado', 'pagada')
