@@ -71,8 +71,6 @@ export default function Mesero() {
   useEffect(() => {
     cargarTodo()
 
-    socket.emit('unirse', rest.id)
-
     socket.on('mesa_actualizada', (mesa) => {
       setMesas(prev => prev.map(m => m.id === mesa.id ? mesa : m))
     })
