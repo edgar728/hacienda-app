@@ -123,8 +123,6 @@ export default function Cocina() {
   useEffect(() => {
     cargarOrdenes()
 
-    socket.emit('unirse', rest.id)
-
     socket.on('orden_recibida', (orden) => {
       if (orden.slug !== slug) return
       const itemsSinBebidas = orden.items?.filter(i => i.categoria !== 'Bebidas')

@@ -34,7 +34,6 @@ const C = {
 }
 
 function MenuMesa() {
-  socket.emit('unirse', restaurante.id)
   const { slug, mesa } = useParams()
   const [restaurante, setRestaurante] = useState(null)
   const [platillos, setPlatillos] = useState([])
